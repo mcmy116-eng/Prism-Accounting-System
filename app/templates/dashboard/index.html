@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+<div class="grid grid-4">
+  <div class="kpi"><div class="label">Cash on hand</div><div class="value">{{ company_settings.base_currency }} {{ total_cash | money }}</div></div>
+  <div class="kpi"><div class="label">Month-to-date revenue</div><div class="value">{{ company_settings.base_currency }} {{ mtd_revenue | money }}</div></div>
+  <div class="kpi"><div class="label">Month-to-date net income</div><div class="value {{ 'positive' if net_income>=0 else 'negative' }}">{{ company_settings.base_currency }} {{ net_income | money }}</div></div>
+  <div class="kpi"><div class="label">Accounts Receivable</div><div class="value">{{ company_settings.base_currency }} {{ total_ar | money }}</div></div>
+</div>
+<div class="grid grid-2" style="margin-top:20px;">
+  <div class="card">
+    <h2>Overdue invoices</h2>
+    {% if overdue_invoices %}
+    <table>
+      <thead><tr><th>Invoice</th><th>Customer</th><th>Due</th><th class="num">Balance</th></tr></thead>
+      <tbody>
+        {% for i in overdue_invoices %}
+        <tr>
+          <td><a href="{{ url_for('invoices.detail', invoice_id=i.id) }}">{{ i.number }}</a></td>
+          <td>{{ i.contact.name }}</td>
+          <td>{{ i.due_date }}</td>
+          <td class="num">{{ i.currency_code }} {{ i.balance_due_cents() | money }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="muted">Nothing overdue. Nice.</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h2>Recent journal activity</h2>
+    {% if recent_entries %}
+    <table>
+      <thead><tr><th>Date</th><th>Memo</th><th>Source</th></tr></thead>
+      <tbody>
+        {% for e in recent_entries %}
+        <tr>
+          <td>{{ e.date }}</td>
+          <td>{{ e.memo }}</td>
+          <td class="muted">{{ e.source_type }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="muted">No activity yet. Create your first invoice or bill to get started.</p>
+    {% endif %}
+  </div>
+</div>
+<div class="grid grid-2">
+  <div class="kpi"><div class="label">Accounts Payable</div><div class="value">{{ company_settings.base_currency }} {{ total_ap | money }}</div></div>
+  <div class="kpi"><div class="label">MTD expenses</div><div class="value">{{ company_settings.base_currency }} {{ mtd_expense | money }}</div></div>
+</div>
+{% endblock %}

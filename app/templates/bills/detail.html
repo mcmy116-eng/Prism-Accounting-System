@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ bill.number }}{% endblock %}
+{% block page_title %}Bill {{ bill.number }} <span class="badge badge-{{ bill.status }}">{{ bill.status }}</span>{% endblock %}
+{% block topbar_actions %}
+<div>
+  {% if current_user.can_edit() and bill.status in ['approved','partial'] %}
+  <a href="{{ url_for('payments.pay', bill_id=bill.id) }}" class="btn btn-primary">Record payment</a>
+  {% endif %}
+  {% if current_user.can_edit() and bill.status == 'approved' and not bill.amount_paid_cents %}
+  <form class="inline" method="post" action="{{ url_for('bills.void', bill_id=bill.id) }}" onsubmit="return confirm('Void this bill?');">
+    <button class="btn btn-danger" type="submit">Void</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Vendor</h3>
+    <p>{% if bill.contact %}<a href="{{ url_for('contacts.detail', contact_id=bill.contact_id) }}">{{ bill.contact.name }}</a>{% else %}—{% endif %}</p>
+    <h3>Dates</h3>
+    <p>Billed {{ bill.bill_date }} · Due {{ bill.due_date }}</p>
+    {% if bill.vendor_ref %}<h3>Vendor reference</h3><p>{{ bill.vendor_ref }}</p>{% endif %}
+    {% if bill.cost_center %}<h3>Segment</h3><p>{{ bill.cost_center.name }}</p>{% endif %}
+    {% if bill.documents %}
+    <h3>Source document</h3>
+    <p><a href="{{ url_for('bills.document_file', doc_id=bill.documents[0].id) }}" target="_blank">{{ bill.documents[0].filename }}</a></p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h3>Totals</h3>
+    <table class="totals">
+      <tr><td>Subtotal</td><td class="num">{{ bill.currency_code }} {{ bill.subtotal_cents | money }}</td></tr>
+      <tr><td>Tax</td><td class="num">{{ bill.currency_code }} {{ bill.tax_cents | money }}</td></tr>
+      <tr class="grand"><td>Total</td><td class="num">{{ bill.currency_code }} {{ bill.total_cents | money }}</td></tr>
+      <tr><td>Paid</td><td class="num">{{ bill.currency_code }} {{ bill.amount_paid_cents | money }}</td></tr>
+      <tr><td><strong>Balance due</strong></td><td class="num"><strong>{{ bill.currency_code }} {{ bill.balance_due_cents() | money }}</strong></td></tr>
+    </table>
+  </div>
+</div>
+<div class="card">
+  <h2>Line items</h2>
+  <table>
+    <thead><tr><th>Description</th><th>Account</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>
+    <tbody>
+      {% for l in bill.lines %}
+      <tr>
+        <td>{{ l.description }}</td>
+        <td class="muted">{{ l.account.code }} {{ l.account.name }}</td>
+        <td class="num">{{ l.quantity }}</td>
+        <td class="num">{{ l.unit_price_cents | money }}</td>
+        <td class="num">{{ l.amount_cents | money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

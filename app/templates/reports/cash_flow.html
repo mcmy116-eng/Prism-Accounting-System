@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Cash Flow{% endblock %}
+{% block page_title %}Cash Flow Statement{% endblock %}
+{% block content %}
+<div class="card">
+  <form method="get" class="toolbar">
+    <div class="filters">
+      <label>From <input type="date" name="start" value="{{ start }}"></label>
+      <label>To <input type="date" name="end" value="{{ end }}"></label>
+      <button class="btn btn-sm" type="submit">Update</button>
+    </div>
+  </form>
+</div>
+<div class="card">
+  <p class="hint">Indirect method: starts from net income and adjusts for non-cash working-capital movements.</p>
+  <h3>Operating activities</h3>
+  <table class="totals">
+    <tr><td>Net income</td><td class="num">{{ net_income | money }}</td></tr>
+    <tr><td>Change in operating assets (AR, inventory, prepaid...)</td><td class="num">{{ -wc_change | money }}</td></tr>
+    <tr><td>Change in operating liabilities (AP, accrued...)</td><td class="num">{{ liab_change | money }}</td></tr>
+    <tr class="grand"><td>Net cash from operating activities</td><td class="num">{{ operating | money }}</td></tr>
+  </table>
+  <h3 style="margin-top:18px;">Investing activities</h3>
+  <table class="totals">
+    <tr class="grand"><td>Net cash from investing activities</td><td class="num">{{ investing | money }}</td></tr>
+  </table>
+  <h3 style="margin-top:18px;">Financing activities</h3>
+  <table class="totals">
+    <tr class="grand"><td>Net cash from financing activities</td><td class="num">{{ financing | money }}</td></tr>
+  </table>
+  <h3 style="margin-top:18px;">Summary</h3>
+  <table class="totals">
+    <tr><td>Net change in cash</td><td class="num">{{ net_change | money }}</td></tr>
+    <tr><td>Cash at start of period</td><td class="num">{{ cash_start | money }}</td></tr>
+    <tr class="grand"><td>Cash at end of period</td><td class="num">{{ cash_end | money }}</td></tr>
+  </table>
+</div>
+{% endblock %}

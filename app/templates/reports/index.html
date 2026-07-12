@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}Reports{% endblock %}
+{% block content %}
+<div class="grid grid-3">
+  <a class="card" href="{{ url_for('reports.pnl') }}" style="color:inherit;"><h3>Profit &amp; Loss</h3><p class="muted">Revenue, COGS, gross profit, expenses, net income for a period.</p></a>
+  <a class="card" href="{{ url_for('reports.pnl_by_segment') }}" style="color:inherit;"><h3>P&amp;L by Segment</h3><p class="muted">Compare e-commerce vs digital marketing vs admin.</p></a>
+  <a class="card" href="{{ url_for('reports.balance_sheet') }}" style="color:inherit;"><h3>Balance Sheet</h3><p class="muted">Assets, liabilities and equity as of a date.</p></a>
+  <a class="card" href="{{ url_for('reports.cash_flow') }}" style="color:inherit;"><h3>Cash Flow Statement</h3><p class="muted">Operating, investing, and financing cash movement (indirect method).</p></a>
+  <a class="card" href="{{ url_for('reports.trial_balance') }}" style="color:inherit;"><h3>Trial Balance</h3><p class="muted">Every account's debit/credit balance as of a date.</p></a>
+  <a class="card" href="{{ url_for('reports.ar_aging') }}" style="color:inherit;"><h3>AR Aging</h3><p class="muted">Outstanding customer invoices by how overdue they are.</p></a>
+  <a class="card" href="{{ url_for('reports.ap_aging') }}" style="color:inherit;"><h3>AP Aging</h3><p class="muted">Outstanding vendor bills by how overdue they are.</p></a>
+  <a class="card" href="{{ url_for('reports.tax') }}" style="color:inherit;"><h3>Tax Summary</h3><p class="muted">Tax collected vs tax paid, net amount due.</p></a>
+  <a class="card" href="{{ url_for('reports.budget') }}" style="color:inherit;"><h3>Budget vs Actual</h3><p class="muted">Compare monthly budgets against actual spend/revenue.</p></a>
+</div>
+{% endblock %}

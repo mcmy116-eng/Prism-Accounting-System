@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{{ invoice.number }}{% endblock %}
+{% block page_title %}Invoice {{ invoice.number }} <span class="badge badge-{{ invoice.status }}">{{ invoice.status }}</span>{% endblock %}
+{% block topbar_actions %}
+<div>
+  <a href="{{ url_for('invoices.pdf', invoice_id=invoice.id) }}" class="btn btn-sm" target="_blank">Download PDF</a>
+  {% if current_user.can_edit() and invoice.status == 'draft' %}
+  <form class="inline" method="post" action="{{ url_for('invoices.send', invoice_id=invoice.id) }}" onsubmit="return confirm('Post this invoice to the ledger and mark as sent? This cannot be edited afterwards.');">
+    <button class="btn btn-primary" type="submit">Post &amp; mark sent</button>
+  </form>
+  {% endif %}
+  {% if current_user.can_edit() and invoice.status in ['sent','partial'] %}
+  <a href="{{ url_for('payments.receive', invoice_id=invoice.id) }}" class="btn btn-primary">Record payment</a>
+  {% endif %}
+  {% if current_user.can_edit() and invoice.status == 'draft' %}
+  <form class="inline" method="post" action="{{ url_for('invoices.void', invoice_id=invoice.id) }}" onsubmit="return confirm('Void this invoice?');">
+    <button class="btn btn-danger" type="submit">Void</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Bill to</h3>
+    <p><a href="{{ url_for('contacts.detail', contact_id=invoice.contact_id) }}">{{ invoice.contact.name }}</a></p>
+    <h3>Dates</h3>
+    <p>Issued {{ invoice.issue_date }} · Due {{ invoice.due_date }}</p>
+    {% if invoice.cost_center %}<h3>Segment</h3><p>{{ invoice.cost_center.name }}</p>{% endif %}
+    {% if invoice.notes %}<h3>Notes</h3><p>{{ invoice.notes }}</p>{% endif %}
+  </div>
+  <div class="card">
+    <h3>Totals</h3>
+    <table class="totals">
+      <tr><td>Subtotal</td><td class="num">{{ invoice.currency_code }} {{ invoice.subtotal_cents | money }}</td></tr>
+      <tr><td>Tax</td><td class="num">{{ invoice.currency_code }} {{ invoice.tax_cents | money }}</td></tr>
+      <tr class="grand"><td>Total</td><td class="num">{{ invoice.currency_code }} {{ invoice.total_cents | money }}</td></tr>
+      <tr><td>Paid</td><td class="num">{{ invoice.currency_code }} {{ invoice.amount_paid_cents | money }}</td></tr>
+      <tr><td><strong>Balance due</strong></td><td class="num"><strong>{{ invoice.currency_code }} {{ invoice.balance_due_cents() | money }}</strong></td></tr>
+    </table>
+  </div>
+</div>
+<div class="card">
+  <h2>Line items</h2>
+  <table>
+    <thead><tr><th>Description</th><th>Account</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>
+    <tbody>
+      {% for l in invoice.lines %}
+      <tr>
+        <td>{{ l.description }}</td>
+        <td class="muted">{{ l.account.code }} {{ l.account.name }}</td>
+        <td class="num">{{ l.quantity }}</td>
+        <td class="num">{{ l.unit_price_cents | money }}</td>
+        <td class="num">{{ l.amount_cents | money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

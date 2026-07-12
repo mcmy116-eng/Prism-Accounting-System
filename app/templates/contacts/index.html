@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Contacts{% endblock %}
+{% block page_title %}Customers &amp; Vendors{% endblock %}
+{% block content %}
+<div class="grid" style="grid-template-columns:2fr 1fr;">
+  <div class="card">
+    <div class="toolbar">
+      <h2 style="margin:0;">Contacts</h2>
+      <form class="filters" method="get">
+        <input type="text" name="q" value="{{ q }}" placeholder="Search by name...">
+        <button class="btn btn-sm" type="submit">Search</button>
+      </form>
+    </div>
+    <table>
+      <thead><tr><th>Name</th><th>Type</th><th>Email</th><th>Currency</th><th></th></tr></thead>
+      <tbody>
+        {% for c in contacts %}
+        <tr>
+          <td><a href="{{ url_for('contacts.detail', contact_id=c.id) }}">{{ c.name }}</a></td>
+          <td class="muted">{{ c.type }}</td>
+          <td>{{ c.email }}</td>
+          <td>{{ c.currency_code }}</td>
+          <td>
+            {% if current_user.can_edit() %}
+            <form class="inline" method="post" action="{{ url_for('contacts.archive', contact_id=c.id) }}" onsubmit="return confirm('Archive this contact?');">
+              <button class="btn btn-sm" type="submit">Archive</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="empty-state">No contacts yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if current_user.can_edit() %}
+  <div class="card">
+    <h2>New contact</h2>
+    <form method="post" action="{{ url_for('contacts.new') }}">
+      <div class="field"><label>Name</label><input name="name" required></div>
+      <div class="field">
+        <label>Type</label>
+        <select name="type">{% for t in types %}<option value="{{ t }}">{{ t }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label>Email</label><input type="email" name="email"></div>
+      <div class="field"><label>Phone</label><input name="phone"></div>
+      <div class="field"><label>Address</label><textarea name="address" rows="2"></textarea></div>
+      <div class="field"><label>Currency</label><input name="currency_code" value="HKD" maxlength="3"></div>
+      <div class="field"><label>Tax ID</label><input name="tax_id"></div>
+      <button class="btn btn-primary" type="submit">Create contact</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

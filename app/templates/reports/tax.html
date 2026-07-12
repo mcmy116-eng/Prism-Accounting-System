@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Tax Summary{% endblock %}
+{% block page_title %}Tax Summary{% endblock %}
+{% block content %}
+<div class="card">
+  <form method="get" class="toolbar">
+    <div class="filters">
+      <label>From <input type="date" name="start" value="{{ start }}"></label>
+      <label>To <input type="date" name="end" value="{{ end }}"></label>
+      <button class="btn btn-sm" type="submit">Update</button>
+    </div>
+  </form>
+</div>
+<div class="card">
+  <table class="totals">
+    <tr><td>Tax collected on sales</td><td class="num">{{ collected | money }}</td></tr>
+    <tr><td>Tax paid on purchases (recoverable)</td><td class="num">{{ paid | money }}</td></tr>
+    <tr class="grand"><td>Net tax due</td><td class="num">{{ net_due | money }}</td></tr>
+  </table>
+</div>
+{% endblock %}

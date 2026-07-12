@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Budget vs Actual{% endblock %}
+{% block page_title %}Budget vs Actual{% endblock %}
+{% block content %}
+<div class="card">
+  <form method="get" class="toolbar">
+    <div class="filters">
+      <label>Month <input type="month" name="period" value="{{ period }}"></label>
+      <button class="btn btn-sm" type="submit">Update</button>
+    </div>
+  </form>
+</div>
+<div class="card">
+  <table>
+    <thead><tr><th>Account</th><th>Segment</th><th class="num">Budget</th><th class="num">Actual</th><th class="num">Variance</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.account.code }} {{ r.account.name }}</td>
+        <td class="muted">{{ r.cost_center.name if r.cost_center else "All" }}</td>
+        <td class="num">{{ r.budget | money }}</td>
+        <td class="num">{{ r.actual | money }}</td>
+        <td class="num" style="color: {{ 'var(--error)' if r.variance > 0 and r.account.type=='expense' else 'inherit' }};">{{ r.variance | money }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="empty-state">No budget lines set for this month. Add some in Settings → Budgets.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p><a href="{{ url_for('settings.budgets') }}" class="btn btn-sm">Manage budgets</a></p>
+{% endblock %}

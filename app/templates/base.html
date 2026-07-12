@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Dashboard{% endblock %} · {{ company_settings.company_name if company_settings else "Accounting" }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">{{ company_settings.company_name if company_settings else "Accounting" }}
+      <small>Accounting System</small>
+    </div>
+    <nav>
+      <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if request.blueprint=='dashboard' }}">Dashboard</a>
+      <div class="section-label">Sales</div>
+      <a href="{{ url_for('invoices.index') }}" class="{{ 'active' if request.blueprint=='invoices' }}">Invoices</a>
+      <a href="{{ url_for('contacts.index') }}?type=customer" class="{{ 'active' if request.blueprint=='contacts' }}">Customers &amp; Vendors</a>
+      <div class="section-label">Purchases</div>
+      <a href="{{ url_for('bills.index') }}" class="{{ 'active' if request.blueprint=='bills' }}">Bills &amp; Expenses</a>
+      <div class="section-label">Banking</div>
+      <a href="{{ url_for('bank.index') }}" class="{{ 'active' if request.blueprint=='bank' }}">Bank Accounts</a>
+      <a href="{{ url_for('payments.index') }}" class="{{ 'active' if request.blueprint=='payments' }}">Payments</a>
+      <div class="section-label">Books</div>
+      <a href="{{ url_for('accounts.index') }}" class="{{ 'active' if request.blueprint=='accounts' }}">Chart of Accounts</a>
+      <a href="{{ url_for('reports.index') }}" class="{{ 'active' if request.blueprint=='reports' }}">Reports</a>
+      <div class="section-label">Admin</div>
+      <a href="{{ url_for('settings.index') }}" class="{{ 'active' if request.blueprint=='settings' }}">Settings</a>
+      {% if current_user.is_admin() %}
+      <a href="{{ url_for('auth.users') }}" class="{{ 'active' if request.endpoint=='auth.users' }}">Users</a>
+      {% endif %}
+    </nav>
+    <div class="user-box">
+      {{ current_user.name }}<br>
+      <span class="muted">{{ current_user.role }}</span> · <a href="{{ url_for('auth.logout') }}">Log out</a>
+    </div>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <h1>{% block page_title %}{% endblock %}</h1>
+      {% block topbar_actions %}{% endblock %}
+    </div>
+    <div class="flashes">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+    </div>
+    <div class="content">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% else %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    <div class="flashes" style="padding-top:16px;">
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endwith %}
+  {% block guest_content %}{% endblock %}
+{% endif %}
+</body>
+</html>

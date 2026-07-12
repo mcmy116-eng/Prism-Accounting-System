@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}P&L by Segment{% endblock %}
+{% block page_title %}Profit &amp; Loss by Segment{% endblock %}
+{% block content %}
+<div class="card">
+  <form method="get" class="toolbar">
+    <div class="filters">
+      <label>From <input type="date" name="start" value="{{ start }}"></label>
+      <label>To <input type="date" name="end" value="{{ end }}"></label>
+      <button class="btn btn-sm" type="submit">Update</button>
+    </div>
+  </form>
+</div>
+<div class="card">
+  <table>
+    <thead><tr><th>Segment</th><th class="num">Revenue</th><th class="num">Expense</th><th class="num">Net</th></tr></thead>
+    <tbody>
+      {% for s in segments %}
+      <tr>
+        <td>{{ s.cost_center.name }}</td>
+        <td class="num">{{ s.revenue | money }}</td>
+        <td class="num">{{ s.expense | money }}</td>
+        <td class="num" style="font-weight:600;">{{ s.net | money }}</td>
+      </tr>
+      {% endfor %}
+      <tr>
+        <td class="muted">Unassigned</td>
+        <td class="num">{{ rev_unassigned | money }}</td>
+        <td class="num">{{ exp_unassigned | money }}</td>
+        <td class="num">{{ (rev_unassigned - exp_unassigned) | money }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Reconcile {{ bank.name }}{% endblock %}
+{% block page_title %}Reconcile {{ bank.name }}{% endblock %}
+{% block content %}
+<p class="muted">Match each imported bank transaction to the ledger entry it belongs to (from an invoice payment, bill
+  payment, or manual entry). If there's no matching entry yet — like a bank fee or interest — post one directly.</p>
+<div class="card">
+  <table>
+    <thead><tr><th>Date</th><th>Description</th><th class="num">Amount</th><th>Match to existing ledger line</th><th>Or post directly</th></tr></thead>
+    <tbody>
+      {% for t in unmatched_txns %}
+      <tr>
+        <td>{{ t.date }}</td>
+        <td>{{ t.description }}</td>
+        <td class="num">{{ t.amount_cents | money }}</td>
+        <td>
+          {% if current_user.can_edit() %}
+          <form class="inline" method="post" action="{{ url_for('bank.match', bank_id=bank.id) }}">
+            <input type="hidden" name="txn_id" value="{{ t.id }}">
+            <select name="line_id" style="min-width:220px;">
+              <option value="">— select entry —</option>
+              {% for l in candidate_lines %}
+              <option value="{{ l.id }}">{{ l.entry.date }} · {{ l.description or l.entry.memo }} · {{ (l.debit_cents - l.credit_cents) | money }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn btn-sm" type="submit">Match</button>
+          </form>
+          {% endif %}
+        </td>
+        <td>
+          {% if current_user.can_edit() %}
+          <form class="inline" method="post" action="{{ url_for('bank.quick_entry', bank_id=bank.id) }}">
+            <input type="hidden" name="txn_id" value="{{ t.id }}">
+            <select name="contra_account_id" required>
+              <option value="">— category —</option>
+              {% for a in all_accounts %}
+              <option value="{{ a.id }}">{{ a.code }} - {{ a.name }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn btn-sm btn-primary" type="submit">Post</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="empty-state">All caught up — no unmatched transactions.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

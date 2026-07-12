@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}{{ contact.name }}{% endblock %}
+{% block page_title %}{{ contact.name }}{% endblock %}
+{% block content %}
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Details</h3>
+    <p><strong>Type:</strong> {{ contact.type }}<br>
+    <strong>Email:</strong> {{ contact.email or "—" }}<br>
+    <strong>Phone:</strong> {{ contact.phone or "—" }}<br>
+    <strong>Currency:</strong> {{ contact.currency_code }}<br>
+    <strong>Tax ID:</strong> {{ contact.tax_id or "—" }}</p>
+    {% if contact.address %}<p><strong>Address:</strong><br>{{ contact.address }}</p>{% endif %}
+    {% if contact.notes %}<p><strong>Notes:</strong><br>{{ contact.notes }}</p>{% endif %}
+  </div>
+  <div class="card">
+    <h3>Invoices</h3>
+    <table>
+      <thead><tr><th>Number</th><th>Status</th><th class="num">Total</th><th class="num">Balance</th></tr></thead>
+      <tbody>
+        {% for i in invoices %}
+        <tr>
+          <td><a href="{{ url_for('invoices.detail', invoice_id=i.id) }}">{{ i.number }}</a></td>
+          <td><span class="badge badge-{{ i.status }}">{{ i.status }}</span></td>
+          <td class="num">{{ i.currency_code }} {{ i.total_cents | money }}</td>
+          <td class="num">{{ i.currency_code }} {{ i.balance_due_cents() | money }}</td>
+        </tr>
+        {% else %}<tr><td colspan="4" class="empty-state">No invoices.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    <h3 style="margin-top:18px;">Bills</h3>
+    <table>
+      <thead><tr><th>Number</th><th>Status</th><th class="num">Total</th><th class="num">Balance</th></tr></thead>
+      <tbody>
+        {% for b in bills %}
+        <tr>
+          <td><a href="{{ url_for('bills.detail', bill_id=b.id) }}">{{ b.number }}</a></td>
+          <td><span class="badge badge-{{ b.status }}">{{ b.status }}</span></td>
+          <td class="num">{{ b.currency_code }} {{ b.total_cents | money }}</td>
+          <td class="num">{{ b.currency_code }} {{ b.balance_due_cents() | money }}</td>
+        </tr>
+        {% else %}<tr><td colspan="4" class="empty-state">No bills.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

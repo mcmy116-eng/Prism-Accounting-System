@@ -1,0 +1,418 @@
+import enum
+from datetime import datetime, date
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
+
+from app.extensions import db
+
+
+def now():
+    return datetime.utcnow()
+
+
+def cents(amount) -> int:
+    """Convert a Decimal/str/float dollar amount to integer cents (banker-safe)."""
+    if amount is None or amount == "":
+        return 0
+    from decimal import Decimal, ROUND_HALF_UP
+    d = Decimal(str(amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return int(d * 100)
+
+
+def money(cents_value: int) -> str:
+    if cents_value is None:
+        cents_value = 0
+    sign = "-" if cents_value < 0 else ""
+    cents_value = abs(cents_value)
+    return f"{sign}{cents_value // 100:,}.{cents_value % 100:02d}"
+
+
+class Role(str, enum.Enum):
+    ADMIN = "admin"
+    BOOKKEEPER = "bookkeeper"
+    VIEWER = "viewer"
+
+
+class AccountType(str, enum.Enum):
+    ASSET = "asset"
+    LIABILITY = "liability"
+    EQUITY = "equity"
+    REVENUE = "revenue"
+    EXPENSE = "expense"
+
+
+DEBIT_NORMAL_TYPES = {AccountType.ASSET, AccountType.EXPENSE}
+
+
+class ContactType(str, enum.Enum):
+    CUSTOMER = "customer"
+    VENDOR = "vendor"
+    BOTH = "both"
+
+
+class InvoiceStatus(str, enum.Enum):
+    DRAFT = "draft"
+    SENT = "sent"
+    PARTIAL = "partial"
+    PAID = "paid"
+    OVERDUE = "overdue"
+    VOID = "void"
+
+
+class BillStatus(str, enum.Enum):
+    DRAFT = "draft"
+    AWAITING_REVIEW = "awaiting_review"
+    APPROVED = "approved"
+    PARTIAL = "partial"
+    PAID = "paid"
+    VOID = "void"
+
+
+class DocStatus(str, enum.Enum):
+    PENDING = "pending"
+    EXTRACTED = "extracted"
+    FAILED = "failed"
+    NONE = "none"
+
+
+class User(UserMixin, db.Model):
+    __tablename__ = "users"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(200), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(20), nullable=False, default=Role.VIEWER.value)
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=now)
+
+    def set_password(self, pw):
+        self.password_hash = generate_password_hash(pw, method="pbkdf2:sha256")
+
+    def check_password(self, pw):
+        return check_password_hash(self.password_hash, pw)
+
+    def is_admin(self):
+        return self.role == Role.ADMIN.value
+
+    def can_edit(self):
+        return self.role in (Role.ADMIN.value, Role.BOOKKEEPER.value)
+
+
+class CompanySettings(db.Model):
+    __tablename__ = "company_settings"
+    id = db.Column(db.Integer, primary_key=True)
+    company_name = db.Column(db.String(200), default="Prism Group International Limited")
+    legal_address = db.Column(db.Text, default="")
+    tax_id = db.Column(db.String(60), default="")
+    base_currency = db.Column(db.String(3), default="HKD")
+    fiscal_year_start_month = db.Column(db.Integer, default=1)
+    invoice_prefix = db.Column(db.String(20), default="INV-")
+    next_invoice_seq = db.Column(db.Integer, default=1)
+    bill_prefix = db.Column(db.String(20), default="BILL-")
+    next_bill_seq = db.Column(db.Integer, default=1)
+    logo_path = db.Column(db.String(255), default="")
+
+
+class Currency(db.Model):
+    __tablename__ = "currencies"
+    code = db.Column(db.String(3), primary_key=True)
+    name = db.Column(db.String(60))
+    symbol = db.Column(db.String(5))
+
+
+class ExchangeRate(db.Model):
+    __tablename__ = "exchange_rates"
+    id = db.Column(db.Integer, primary_key=True)
+    currency_code = db.Column(db.String(3), db.ForeignKey("currencies.code"))
+    rate_to_base = db.Column(db.Float, nullable=False)  # 1 unit of currency = X base currency
+    as_of = db.Column(db.Date, default=date.today)
+
+
+class CostCenter(db.Model):
+    __tablename__ = "cost_centers"
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), unique=True)
+    name = db.Column(db.String(120))
+    active = db.Column(db.Boolean, default=True)
+
+
+class TaxRate(db.Model):
+    __tablename__ = "tax_rates"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(60))
+    rate = db.Column(db.Float, default=0.0)  # percent, e.g. 5.0 for 5%
+    active = db.Column(db.Boolean, default=True)
+
+
+class Account(db.Model):
+    __tablename__ = "accounts"
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), unique=True, nullable=False)
+    name = db.Column(db.String(150), nullable=False)
+    type = db.Column(db.String(20), nullable=False)
+    subtype = db.Column(db.String(30), nullable=True)  # e.g. 'cogs' within expense
+    description = db.Column(db.String(255), default="")
+    active = db.Column(db.Boolean, default=True)
+    is_bank = db.Column(db.Boolean, default=False)
+    system_locked = db.Column(db.Boolean, default=False)  # can't delete
+
+    def balance_cents(self, as_of=None, cost_center_id=None):
+        from sqlalchemy import func
+        q = db.session.query(
+            func.coalesce(func.sum(JournalLine.debit_cents), 0),
+            func.coalesce(func.sum(JournalLine.credit_cents), 0),
+        ).join(JournalEntry).filter(
+            JournalLine.account_id == self.id,
+            JournalEntry.is_posted == True,  # noqa: E712
+        )
+        if as_of:
+            q = q.filter(JournalEntry.date <= as_of)
+        if cost_center_id:
+            q = q.filter(JournalLine.cost_center_id == cost_center_id)
+        debit, credit = q.one()
+        if self.type in (AccountType.ASSET.value, AccountType.EXPENSE.value):
+            return debit - credit
+        return credit - debit
+
+
+class Contact(db.Model):
+    __tablename__ = "contacts"
+    id = db.Column(db.Integer, primary_key=True)
+    type = db.Column(db.String(20), default=ContactType.CUSTOMER.value)
+    name = db.Column(db.String(150), nullable=False)
+    email = db.Column(db.String(200), default="")
+    phone = db.Column(db.String(60), default="")
+    address = db.Column(db.Text, default="")
+    currency_code = db.Column(db.String(3), default="HKD")
+    tax_id = db.Column(db.String(60), default="")
+    notes = db.Column(db.Text, default="")
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=now)
+
+
+class Document(db.Model):
+    __tablename__ = "documents"
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255))
+    filepath = db.Column(db.String(500))
+    mimetype = db.Column(db.String(100))
+    uploaded_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    uploaded_at = db.Column(db.DateTime, default=now)
+    extraction_status = db.Column(db.String(20), default=DocStatus.NONE.value)
+    extracted_json = db.Column(db.Text, default="")
+    extraction_error = db.Column(db.Text, default="")
+    bill_id = db.Column(db.Integer, db.ForeignKey("bills.id"), nullable=True)
+
+
+class JournalEntry(db.Model):
+    __tablename__ = "journal_entries"
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, default=date.today, nullable=False)
+    memo = db.Column(db.String(255), default="")
+    reference = db.Column(db.String(100), default="")
+    source_type = db.Column(db.String(30), default="manual")  # invoice/bill/payment/manual/bank
+    source_id = db.Column(db.Integer, nullable=True)
+    created_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    created_at = db.Column(db.DateTime, default=now)
+    is_posted = db.Column(db.Boolean, default=True)
+
+    lines = db.relationship("JournalLine", backref="entry", cascade="all, delete-orphan")
+
+    def total_debit(self):
+        return sum(l.debit_cents for l in self.lines)
+
+    def total_credit(self):
+        return sum(l.credit_cents for l in self.lines)
+
+    def is_balanced(self):
+        return self.total_debit() == self.total_credit()
+
+
+class JournalLine(db.Model):
+    __tablename__ = "journal_lines"
+    id = db.Column(db.Integer, primary_key=True)
+    journal_entry_id = db.Column(db.Integer, db.ForeignKey("journal_entries.id"), nullable=False)
+    account_id = db.Column(db.Integer, db.ForeignKey("accounts.id"), nullable=False)
+    cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"), nullable=True)
+    contact_id = db.Column(db.Integer, db.ForeignKey("contacts.id"), nullable=True)
+    description = db.Column(db.String(255), default="")
+    debit_cents = db.Column(db.Integer, default=0)
+    credit_cents = db.Column(db.Integer, default=0)
+
+    account = db.relationship("Account")
+    cost_center = db.relationship("CostCenter")
+
+
+class Invoice(db.Model):
+    __tablename__ = "invoices"
+    id = db.Column(db.Integer, primary_key=True)
+    number = db.Column(db.String(40), unique=True)
+    contact_id = db.Column(db.Integer, db.ForeignKey("contacts.id"), nullable=False)
+    issue_date = db.Column(db.Date, default=date.today)
+    due_date = db.Column(db.Date)
+    status = db.Column(db.String(20), default=InvoiceStatus.DRAFT.value)
+    currency_code = db.Column(db.String(3), default="HKD")
+    fx_rate = db.Column(db.Float, default=1.0)
+    cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"), nullable=True)
+    subtotal_cents = db.Column(db.Integer, default=0)
+    tax_cents = db.Column(db.Integer, default=0)
+    total_cents = db.Column(db.Integer, default=0)
+    amount_paid_cents = db.Column(db.Integer, default=0)
+    notes = db.Column(db.Text, default="")
+    journal_entry_id = db.Column(db.Integer, db.ForeignKey("journal_entries.id"), nullable=True)
+    recurring_rule_id = db.Column(db.Integer, db.ForeignKey("recurring_invoices.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=now)
+
+    contact = db.relationship("Contact")
+    lines = db.relationship("InvoiceLine", backref="invoice", cascade="all, delete-orphan")
+    cost_center = db.relationship("CostCenter")
+
+    def balance_due_cents(self):
+        return self.total_cents - self.amount_paid_cents
+
+
+class InvoiceLine(db.Model):
+    __tablename__ = "invoice_lines"
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey("invoices.id"), nullable=False)
+    description = db.Column(db.String(255))
+    quantity = db.Column(db.Float, default=1.0)
+    unit_price_cents = db.Column(db.Integer, default=0)
+    account_id = db.Column(db.Integer, db.ForeignKey("accounts.id"), nullable=False)
+    tax_rate_id = db.Column(db.Integer, db.ForeignKey("tax_rates.id"), nullable=True)
+    cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"), nullable=True)
+    amount_cents = db.Column(db.Integer, default=0)
+
+    account = db.relationship("Account")
+    tax_rate = db.relationship("TaxRate")
+
+
+class RecurringInvoice(db.Model):
+    __tablename__ = "recurring_invoices"
+    id = db.Column(db.Integer, primary_key=True)
+    contact_id = db.Column(db.Integer, db.ForeignKey("contacts.id"))
+    frequency = db.Column(db.String(20), default="monthly")  # weekly/monthly/quarterly/annual
+    next_run_date = db.Column(db.Date)
+    active = db.Column(db.Boolean, default=True)
+    template_json = db.Column(db.Text)  # lines, notes, due terms
+    cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"), nullable=True)
+    currency_code = db.Column(db.String(3), default="HKD")
+    due_days = db.Column(db.Integer, default=14)
+
+    contact = db.relationship("Contact")
+
+
+class Bill(db.Model):
+    __tablename__ = "bills"
+    id = db.Column(db.Integer, primary_key=True)
+    number = db.Column(db.String(40), unique=True)
+    vendor_ref = db.Column(db.String(80), default="")
+    contact_id = db.Column(db.Integer, db.ForeignKey("contacts.id"), nullable=True)
+    bill_date = db.Column(db.Date, default=date.today)
+    due_date = db.Column(db.Date)
+    status = db.Column(db.String(20), default=BillStatus.DRAFT.value)
+    currency_code = db.Column(db.String(3), default="HKD")
+    fx_rate = db.Column(db.Float, default=1.0)
+    cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"), nullable=True)
+    subtotal_cents = db.Column(db.Integer, default=0)
+    tax_cents = db.Column(db.Integer, default=0)
+    total_cents = db.Column(db.Integer, default=0)
+    amount_paid_cents = db.Column(db.Integer, default=0)
+    notes = db.Column(db.Text, default="")
+    journal_entry_id = db.Column(db.Integer, db.ForeignKey("journal_entries.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=now)
+
+    contact = db.relationship("Contact")
+    lines = db.relationship("BillLine", backref="bill", cascade="all, delete-orphan")
+    documents = db.relationship("Document", backref="bill")
+    cost_center = db.relationship("CostCenter")
+
+    def balance_due_cents(self):
+        return self.total_cents - self.amount_paid_cents
+
+
+class BillLine(db.Model):
+    __tablename__ = "bill_lines"
+    id = db.Column(db.Integer, primary_key=True)
+    bill_id = db.Column(db.Integer, db.ForeignKey("bills.id"), nullable=False)
+    description = db.Column(db.String(255))
+    quantity = db.Column(db.Float, default=1.0)
+    unit_price_cents = db.Column(db.Integer, default=0)
+    account_id = db.Column(db.Integer, db.ForeignKey("accounts.id"), nullable=True)
+    tax_rate_id = db.Column(db.Integer, db.ForeignKey("tax_rates.id"), nullable=True)
+    cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"), nullable=True)
+    amount_cents = db.Column(db.Integer, default=0)
+    category_guess = db.Column(db.String(120), default="")
+
+    account = db.relationship("Account")
+    tax_rate = db.relationship("TaxRate")
+
+
+class BankAccount(db.Model):
+    __tablename__ = "bank_accounts"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150))
+    account_number = db.Column(db.String(80), default="")
+    currency_code = db.Column(db.String(3), default="HKD")
+    gl_account_id = db.Column(db.Integer, db.ForeignKey("accounts.id"))
+    opening_balance_cents = db.Column(db.Integer, default=0)
+    active = db.Column(db.Boolean, default=True)
+
+    gl_account = db.relationship("Account")
+
+
+class BankTransaction(db.Model):
+    __tablename__ = "bank_transactions"
+    id = db.Column(db.Integer, primary_key=True)
+    bank_account_id = db.Column(db.Integer, db.ForeignKey("bank_accounts.id"))
+    date = db.Column(db.Date)
+    description = db.Column(db.String(255))
+    amount_cents = db.Column(db.Integer)  # signed: + inflow, - outflow
+    import_batch = db.Column(db.String(60), default="")
+    status = db.Column(db.String(20), default="unmatched")  # unmatched/matched/reconciled
+    matched_journal_line_id = db.Column(db.Integer, db.ForeignKey("journal_lines.id"), nullable=True)
+
+    bank_account = db.relationship("BankAccount")
+
+
+class Payment(db.Model):
+    __tablename__ = "payments"
+    id = db.Column(db.Integer, primary_key=True)
+    direction = db.Column(db.String(3))  # "in" or "out"
+    contact_id = db.Column(db.Integer, db.ForeignKey("contacts.id"), nullable=True)
+    date = db.Column(db.Date, default=date.today)
+    amount_cents = db.Column(db.Integer)
+    currency_code = db.Column(db.String(3), default="HKD")
+    bank_account_id = db.Column(db.Integer, db.ForeignKey("bank_accounts.id"))
+    method = db.Column(db.String(40), default="")
+    reference = db.Column(db.String(100), default="")
+    journal_entry_id = db.Column(db.Integer, db.ForeignKey("journal_entries.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=now)
+
+    contact = db.relationship("Contact")
+    bank_account = db.relationship("BankAccount")
+    allocations = db.relationship("PaymentAllocation", backref="payment", cascade="all, delete-orphan")
+
+
+class PaymentAllocation(db.Model):
+    __tablename__ = "payment_allocations"
+    id = db.Column(db.Integer, primary_key=True)
+    payment_id = db.Column(db.Integer, db.ForeignKey("payments.id"), nullable=False)
+    invoice_id = db.Column(db.Integer, db.ForeignKey("invoices.id"), nullable=True)
+    bill_id = db.Column(db.Integer, db.ForeignKey("bills.id"), nullable=True)
+    amount_cents = db.Column(db.Integer)
+
+    invoice = db.relationship("Invoice")
+    bill = db.relationship("Bill")
+
+
+class Budget(db.Model):
+    __tablename__ = "budgets"
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey("accounts.id"), nullable=False)
+    cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"), nullable=True)
+    period = db.Column(db.String(7))  # "YYYY-MM"
+    amount_cents = db.Column(db.Integer, default=0)
+
+    account = db.relationship("Account")
+    cost_center = db.relationship("CostCenter")

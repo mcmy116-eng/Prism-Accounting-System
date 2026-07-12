@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Chart of Accounts{% endblock %}
+{% block page_title %}Chart of Accounts{% endblock %}
+{% block content %}
+<div class="grid" style="grid-template-columns:2fr 1fr;">
+  <div class="card">
+    <h2>Accounts</h2>
+    <table>
+      <thead><tr><th>Code</th><th>Name</th><th>Type</th><th class="num">Balance</th><th></th></tr></thead>
+      <tbody>
+        {% for a in accounts %}
+        <tr {% if not a.active %}style="opacity:.5;"{% endif %}>
+          <td>{{ a.code }}</td>
+          <td><a href="{{ url_for('accounts.ledger', account_id=a.id) }}">{{ a.name }}</a>{% if a.subtype %} <span class="badge badge-draft">{{ a.subtype }}</span>{% endif %}{% if a.is_bank %} <span class="badge badge-approved">bank</span>{% endif %}</td>
+          <td class="muted">{{ a.type }}</td>
+          <td class="num">{{ balances[a.id] | money }}</td>
+          <td>
+            {% if current_user.can_edit() and not a.system_locked %}
+            <form class="inline" method="post" action="{{ url_for('accounts.toggle', account_id=a.id) }}">
+              <button class="btn btn-sm" type="submit">{{ "Deactivate" if a.active else "Activate" }}</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if current_user.can_edit() %}
+  <div class="card">
+    <h2>New account</h2>
+    <form method="post" action="{{ url_for('accounts.new') }}">
+      <div class="field"><label>Code</label><input name="code" required placeholder="e.g. 6200"></div>
+      <div class="field"><label>Name</label><input name="name" required></div>
+      <div class="field">
+        <label>Type</label>
+        <select name="type">
+          {% for t in types %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Subtype (optional)</label><input name="subtype" placeholder="e.g. cogs"></div>
+      <div class="field checkbox-field"><input type="checkbox" name="is_bank" id="is_bank"><label for="is_bank" style="margin:0;">This is a bank account's GL account</label></div>
+      <button class="btn btn-primary" type="submit">Create account</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

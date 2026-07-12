@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Tax Rates{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+<div class="tabs">
+  <a href="{{ url_for('settings.index') }}">Company</a>
+  <a class="active" href="{{ url_for('settings.tax_rates') }}">Tax rates</a>
+  <a href="{{ url_for('settings.cost_centers') }}">Cost centers</a>
+  <a href="{{ url_for('settings.budgets') }}">Budgets</a>
+</div>
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Tax rates</h2>
+    <table>
+      <thead><tr><th>Name</th><th class="num">Rate</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for r in rates %}
+        <tr>
+          <td>{{ r.name }}</td>
+          <td class="num">{{ r.rate }}%</td>
+          <td>{{ "Active" if r.active else "Inactive" }}</td>
+          <td>{% if current_user.can_edit() %}
+            <form class="inline" method="post" action="{{ url_for('settings.toggle_tax_rate', rate_id=r.id) }}">
+              <button class="btn btn-sm" type="submit">{{ "Deactivate" if r.active else "Activate" }}</button>
+            </form>
+          {% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if current_user.can_edit() %}
+  <div class="card">
+    <h2>Add tax rate</h2>
+    <form method="post" action="{{ url_for('settings.new_tax_rate') }}">
+      <div class="field"><label>Name</label><input name="name" required placeholder="e.g. HK Standard VAT"></div>
+      <div class="field"><label>Rate (%)</label><input type="number" step="0.01" name="rate" value="0" required></div>
+      <button class="btn btn-primary" type="submit">Add</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

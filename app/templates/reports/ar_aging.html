@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ "AR" if kind == "invoice" else "AP" }} Aging{% endblock %}
+{% block page_title %}{{ "Accounts Receivable Aging" if kind == "invoice" else "Accounts Payable Aging" }}{% endblock %}
+{% block content %}
+<div class="grid grid-4" style="grid-template-columns:repeat(5,1fr);">
+  {% for bucket, amt in buckets.items() %}
+  <div class="kpi"><div class="label">{{ bucket }}</div><div class="value">{{ amt | money }}</div></div>
+  {% endfor %}
+</div>
+<div class="card" style="margin-top:20px;">
+  <table>
+    <thead><tr><th>{{ "Invoice" if kind == "invoice" else "Bill" }}</th><th>{{ "Customer" if kind == "invoice" else "Vendor" }}</th><th>Due date</th><th>Days overdue</th><th>Bucket</th><th class="num">Balance</th></tr></thead>
+    <tbody>
+      {% for d in detail %}
+      <tr>
+        <td>
+          {% if kind == "invoice" %}<a href="{{ url_for('invoices.detail', invoice_id=d.item.id) }}">{{ d.item.number }}</a>
+          {% else %}<a href="{{ url_for('bills.detail', bill_id=d.item.id) }}">{{ d.item.number }}</a>{% endif %}
+        </td>
+        <td>{{ d.item.contact.name if d.item.contact else "—" }}</td>
+        <td>{{ d.due_date }}</td>
+        <td>{{ d.days }}</td>
+        <td><span class="badge badge-draft">{{ d.bucket }}</span></td>
+        <td class="num">{{ d.balance | money }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="empty-state">Nothing outstanding.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

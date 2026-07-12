@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Bills & Expenses{% endblock %}
+{% block page_title %}Bills &amp; Expenses{% endblock %}
+{% block topbar_actions %}
+{% if current_user.can_edit() %}
+<a href="{{ url_for('bills.upload') }}" class="btn btn-primary">Upload bill / receipt</a>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <div class="filters">
+      <a href="{{ url_for('bills.index') }}" class="btn btn-sm {{ 'btn-primary' if not status_filter }}">All</a>
+      {% for s in statuses %}
+      <a href="{{ url_for('bills.index', status=s) }}" class="btn btn-sm {{ 'btn-primary' if status_filter==s }}">{{ s }}</a>
+      {% endfor %}
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Number</th><th>Vendor</th><th>Date</th><th>Due</th><th>Status</th><th class="num">Total</th><th class="num">Balance</th></tr></thead>
+    <tbody>
+      {% for b in bills %}
+      <tr onclick="location.href='{{ url_for('bills.detail', bill_id=b.id) if b.status not in ['draft','awaiting_review'] else url_for('bills.review', bill_id=b.id) }}'" style="cursor:pointer;">
+        <td>{{ b.number }}</td>
+        <td>{{ b.contact.name if b.contact else "—" }}</td>
+        <td>{{ b.bill_date }}</td>
+        <td>{{ b.due_date }}</td>
+        <td><span class="badge badge-{{ b.status }}">{{ b.status }}</span></td>
+        <td class="num">{{ b.currency_code }} {{ b.total_cents | money }}</td>
+        <td class="num">{{ b.currency_code }} {{ b.balance_due_cents() | money }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="empty-state">No bills yet. Upload one to get started — AI will read it for you.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

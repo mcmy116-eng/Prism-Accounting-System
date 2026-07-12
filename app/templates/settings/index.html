@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+<div class="tabs">
+  <a class="active" href="{{ url_for('settings.index') }}">Company</a>
+  <a href="{{ url_for('settings.tax_rates') }}">Tax rates</a>
+  <a href="{{ url_for('settings.cost_centers') }}">Cost centers</a>
+  <a href="{{ url_for('settings.budgets') }}">Budgets</a>
+</div>
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Company details</h2>
+    <form method="post">
+      <div class="field"><label>Company name</label><input name="company_name" value="{{ settings.company_name }}" {{ 'disabled' if not current_user.is_admin() }}></div>
+      <div class="field"><label>Legal address</label><textarea name="legal_address" rows="3" {{ 'disabled' if not current_user.is_admin() }}>{{ settings.legal_address }}</textarea></div>
+      <div class="field"><label>Tax / Business Registration ID</label><input name="tax_id" value="{{ settings.tax_id }}" {{ 'disabled' if not current_user.is_admin() }}></div>
+      <div class="field"><label>Base currency</label><input name="base_currency" value="{{ settings.base_currency }}" maxlength="3" {{ 'disabled' if not current_user.is_admin() }}></div>
+      <div class="field">
+        <label>Fiscal year start month</label>
+        <select name="fiscal_year_start_month" {{ 'disabled' if not current_user.is_admin() }}>
+          {% for m in range(1,13) %}<option value="{{ m }}" {{ 'selected' if settings.fiscal_year_start_month==m }}>{{ m }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Invoice number prefix</label><input name="invoice_prefix" value="{{ settings.invoice_prefix }}" {{ 'disabled' if not current_user.is_admin() }}></div>
+      <div class="field"><label>Bill number prefix</label><input name="bill_prefix" value="{{ settings.bill_prefix }}" {{ 'disabled' if not current_user.is_admin() }}></div>
+      {% if current_user.is_admin() %}<button class="btn btn-primary" type="submit">Save</button>{% endif %}
+    </form>
+  </div>
+  <div class="card">
+    <h2>Currencies</h2>
+    <table>
+      <thead><tr><th>Code</th><th>Name</th><th>Symbol</th></tr></thead>
+      <tbody>{% for c in currencies %}<tr><td>{{ c.code }}</td><td>{{ c.name }}</td><td>{{ c.symbol }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% if current_user.can_edit() %}
+    <form method="post" action="{{ url_for('settings.new_currency') }}" style="margin-top:14px;">
+      <div class="grid grid-3">
+        <div class="field"><label>Code</label><input name="code" maxlength="3" placeholder="SGD"></div>
+        <div class="field"><label>Name</label><input name="name" placeholder="Singapore Dollar"></div>
+        <div class="field"><label>Symbol</label><input name="symbol" placeholder="$"></div>
+      </div>
+      <button class="btn btn-sm" type="submit">Add currency</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

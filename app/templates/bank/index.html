@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Bank Accounts{% endblock %}
+{% block page_title %}Bank Accounts{% endblock %}
+{% block topbar_actions %}
+{% if current_user.can_edit() %}<a href="{{ url_for('bank.new') }}" class="btn btn-primary">Add bank account</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="grid grid-3">
+  {% for a in accounts %}
+  <a href="{{ url_for('bank.detail', bank_id=a.id) }}" class="card" style="display:block;color:inherit;">
+    <h3>{{ a.name }}</h3>
+    <div style="font-size:22px;font-weight:700;">{{ a.currency_code }} {{ balances[a.id] | money }}</div>
+    <p class="muted" style="margin-bottom:0;">{{ a.account_number or "" }}</p>
+  </a>
+  {% else %}
+  <p class="empty-state">No bank accounts yet. Add one to start recording cash movements.</p>
+  {% endfor %}
+</div>
+{% endblock %}

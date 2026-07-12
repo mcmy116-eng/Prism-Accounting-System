@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Balance Sheet{% endblock %}
+{% block page_title %}Balance Sheet{% endblock %}
+{% block content %}
+<div class="card">
+  <form method="get" class="toolbar">
+    <div class="filters">
+      <label>As of <input type="date" name="as_of" value="{{ as_of }}"></label>
+      <button class="btn btn-sm" type="submit">Update</button>
+    </div>
+  </form>
+</div>
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Assets</h3>
+    <table>
+      {% for a, amt in asset_rows %}<tr><td>{{ a.code }} {{ a.name }}</td><td class="num">{{ amt | money }}</td></tr>{% endfor %}
+      <tr class="grand" style="font-weight:700;border-top:1px solid var(--border);"><td>Total assets</td><td class="num">{{ total_assets | money }}</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Liabilities</h3>
+    <table>
+      {% for a, amt in liab_rows %}<tr><td>{{ a.code }} {{ a.name }}</td><td class="num">{{ amt | money }}</td></tr>{% endfor %}
+      <tr style="font-weight:700;border-top:1px solid var(--border);"><td>Total liabilities</td><td class="num">{{ total_liabilities | money }}</td></tr>
+    </table>
+    <h3 style="margin-top:20px;">Equity</h3>
+    <table>
+      {% for a, amt in equity_rows %}<tr><td>{{ a.code }} {{ a.name }}</td><td class="num">{{ amt | money }}</td></tr>{% endfor %}
+      <tr><td>Retained earnings (cumulative net income)</td><td class="num">{{ retained_earnings | money }}</td></tr>
+      <tr style="font-weight:700;border-top:1px solid var(--border);"><td>Total equity</td><td class="num">{{ total_equity | money }}</td></tr>
+    </table>
+    <table class="totals" style="margin-top:10px;">
+      <tr class="grand"><td>Total liabilities + equity</td><td class="num">{{ (total_liabilities + total_equity) | money }}</td></tr>
+    </table>
+  </div>
+</div>
+{% endblock %}

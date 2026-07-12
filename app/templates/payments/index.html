@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Payments{% endblock %}
+{% block page_title %}Payments{% endblock %}
+{% block content %}
+<div class="card">
+  <table>
+    <thead><tr><th>Date</th><th>Direction</th><th>Contact</th><th>Method</th><th>Reference</th><th class="num">Amount</th></tr></thead>
+    <tbody>
+      {% for p in payments %}
+      <tr>
+        <td>{{ p.date }}</td>
+        <td><span class="badge {{ 'badge-paid' if p.direction=='in' else 'badge-overdue' }}">{{ "Received" if p.direction=="in" else "Paid" }}</span></td>
+        <td>{{ p.contact.name if p.contact else "—" }}</td>
+        <td class="muted">{{ p.method }}</td>
+        <td class="muted">{{ p.reference }}</td>
+        <td class="num">{{ p.currency_code }} {{ p.amount_cents | money }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="empty-state">No payments recorded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

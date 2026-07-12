@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block page_title %}Users{% endblock %}
+{% block content %}
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Team members</h2>
+    <table>
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u.name }}</td>
+          <td>{{ u.email }}</td>
+          <td>{{ u.role }}</td>
+          <td>{{ "Active" if u.active else "Disabled" }}</td>
+          <td>
+            {% if u.id != current_user.id %}
+            <form class="inline" method="post" action="{{ url_for('auth.toggle_user', user_id=u.id) }}">
+              <button class="btn btn-sm" type="submit">{{ "Disable" if u.active else "Enable" }}</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2>Add a user</h2>
+    <form method="post" action="{{ url_for('auth.new_user') }}">
+      <div class="field"><label>Name</label><input name="name" required></div>
+      <div class="field"><label>Email</label><input type="email" name="email" required></div>
+      <div class="field"><label>Temporary password</label><input type="password" name="password" required></div>
+      <div class="field">
+        <label>Role</label>
+        <select name="role">
+          {% for r in roles %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+        </select>
+        <div class="hint">Admin: full access incl. users/settings. Bookkeeper: can record transactions. Viewer: read-only.</div>
+      </div>
+      <button class="btn btn-primary" type="submit">Create user</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

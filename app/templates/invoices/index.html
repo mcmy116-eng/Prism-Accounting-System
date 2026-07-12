@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Invoices{% endblock %}
+{% block page_title %}Invoices{% endblock %}
+{% block topbar_actions %}
+<div>
+  <a href="{{ url_for('invoices.recurring_index') }}" class="btn btn-sm">Recurring invoices</a>
+  {% if current_user.can_edit() %}<a href="{{ url_for('invoices.new') }}" class="btn btn-primary">New invoice</a>{% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <div class="filters">
+      <a href="{{ url_for('invoices.index') }}" class="btn btn-sm {{ 'btn-primary' if not status_filter }}">All</a>
+      {% for s in statuses %}
+      <a href="{{ url_for('invoices.index', status=s) }}" class="btn btn-sm {{ 'btn-primary' if status_filter==s }}">{{ s }}</a>
+      {% endfor %}
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Number</th><th>Customer</th><th>Issued</th><th>Due</th><th>Status</th><th class="num">Total</th><th class="num">Balance</th></tr></thead>
+    <tbody>
+      {% for i in invoices %}
+      <tr onclick="location.href='{{ url_for('invoices.detail', invoice_id=i.id) }}'" style="cursor:pointer;">
+        <td>{{ i.number }}</td>
+        <td>{{ i.contact.name }}</td>
+        <td>{{ i.issue_date }}</td>
+        <td>{{ i.due_date }}</td>
+        <td><span class="badge badge-{{ i.status }}">{{ i.status }}</span></td>
+        <td class="num">{{ i.currency_code }} {{ i.total_cents | money }}</td>
+        <td class="num">{{ i.currency_code }} {{ i.balance_due_cents() | money }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="empty-state">No invoices yet. Create your first one.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

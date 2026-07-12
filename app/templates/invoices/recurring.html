@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Recurring Invoices{% endblock %}
+{% block page_title %}Recurring Invoices{% endblock %}
+{% block topbar_actions %}
+{% if current_user.can_edit() %}<a href="{{ url_for('invoices.recurring_new') }}" class="btn btn-primary">New schedule</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card">
+  <table>
+    <thead><tr><th>Customer</th><th>Frequency</th><th>Next run</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rules %}
+      <tr>
+        <td>{{ r.contact.name }}</td>
+        <td class="muted">{{ r.frequency }}</td>
+        <td>{{ r.next_run_date }}</td>
+        <td>
+          {% if current_user.can_edit() %}
+          <form class="inline" method="post" action="{{ url_for('invoices.recurring_run', rule_id=r.id) }}" onsubmit="return confirm('Generate a draft invoice now for this schedule?');">
+            <button class="btn btn-sm btn-primary" type="submit">Generate now</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="empty-state">No recurring invoice schedules yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

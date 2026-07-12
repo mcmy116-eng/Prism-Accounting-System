@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Cost Centers{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+<div class="tabs">
+  <a href="{{ url_for('settings.index') }}">Company</a>
+  <a href="{{ url_for('settings.tax_rates') }}">Tax rates</a>
+  <a class="active" href="{{ url_for('settings.cost_centers') }}">Cost centers</a>
+  <a href="{{ url_for('settings.budgets') }}">Budgets</a>
+</div>
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Cost centers / segments</h2>
+    <p class="hint">Use these to track e-commerce vs digital marketing services separately in reports.</p>
+    <table>
+      <thead><tr><th>Code</th><th>Name</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for c in centers %}
+        <tr>
+          <td>{{ c.code }}</td>
+          <td>{{ c.name }}</td>
+          <td>{{ "Active" if c.active else "Inactive" }}</td>
+          <td>{% if current_user.can_edit() %}
+            <form class="inline" method="post" action="{{ url_for('settings.toggle_cost_center', cc_id=c.id) }}">
+              <button class="btn btn-sm" type="submit">{{ "Deactivate" if c.active else "Activate" }}</button>
+            </form>
+          {% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if current_user.can_edit() %}
+  <div class="card">
+    <h2>Add cost center</h2>
+    <form method="post" action="{{ url_for('settings.new_cost_center') }}">
+      <div class="field"><label>Code</label><input name="code" required placeholder="e.g. RETAIL"></div>
+      <div class="field"><label>Name</label><input name="name" required></div>
+      <button class="btn btn-primary" type="submit">Add</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

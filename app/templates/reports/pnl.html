@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Profit & Loss{% endblock %}
+{% block page_title %}Profit &amp; Loss{% endblock %}
+{% block content %}
+<div class="card">
+  <form method="get" class="toolbar">
+    <div class="filters">
+      <label>From <input type="date" name="start" value="{{ start }}"></label>
+      <label>To <input type="date" name="end" value="{{ end }}"></label>
+      <label>Segment
+        <select name="cost_center_id">
+          <option value="">All</option>
+          {% for cc in cost_centers %}<option value="{{ cc.id }}" {{ 'selected' if cost_center_id==cc.id }}>{{ cc.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="btn btn-sm" type="submit">Update</button>
+    </div>
+  </form>
+</div>
+<div class="card">
+  <h3>Revenue</h3>
+  <table>
+    {% for a, amt in revenue_rows %}<tr><td>{{ a.code }} {{ a.name }}</td><td class="num">{{ amt | money }}</td></tr>{% endfor %}
+    <tr class="grand" style="font-weight:700;border-top:1px solid var(--border);"><td>Total revenue</td><td class="num">{{ total_revenue | money }}</td></tr>
+  </table>
+  <h3 style="margin-top:20px;">Cost of Goods Sold</h3>
+  <table>
+    {% for a, amt in cogs_rows %}<tr><td>{{ a.code }} {{ a.name }}</td><td class="num">{{ amt | money }}</td></tr>{% endfor %}
+    <tr style="font-weight:700;border-top:1px solid var(--border);"><td>Total COGS</td><td class="num">{{ total_cogs | money }}</td></tr>
+  </table>
+  <table class="totals" style="margin-top:10px;">
+    <tr class="grand"><td>Gross profit</td><td class="num">{{ gross_profit | money }}</td></tr>
+  </table>
+  <h3 style="margin-top:20px;">Operating Expenses</h3>
+  <table>
+    {% for a, amt in opex_rows %}<tr><td>{{ a.code }} {{ a.name }}</td><td class="num">{{ amt | money }}</td></tr>{% endfor %}
+    <tr style="font-weight:700;border-top:1px solid var(--border);"><td>Total operating expenses</td><td class="num">{{ total_opex | money }}</td></tr>
+  </table>
+  <table class="totals" style="margin-top:10px;">
+    <tr class="grand"><td>Net income</td><td class="num">{{ net_income | money }}</td></tr>
+  </table>
+</div>
+{% endblock %}
