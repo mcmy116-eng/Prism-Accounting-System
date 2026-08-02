@@ -22,7 +22,7 @@ services:
     runtime: docker
     plan: starter              # ~US$7/mo, always-on. "free" also works but sleeps when idle.
     dockerfilePath: ./Dockerfile
-    branch: claude/prism-accounting-system-m97iv8   # change to your default branch once merged
+    branch: main                    # the repo's default branch
     autoDeploy: true
     healthCheckPath: /auth/login
     # Runs once before each deploy. seed.py is idempotent: it creates the chart of

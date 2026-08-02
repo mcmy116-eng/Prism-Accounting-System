@@ -43,9 +43,8 @@ idle and the free database is deleted after 30 days — not suitable for real bo
   a web service (`prism-accounting`) and a database (`prism-accounting-db`).
 - Click **Apply**.
 
-> The `render.yaml` is set to deploy the `claude/prism-accounting-system-m97iv8`
-> branch (which has all the latest features). Once that work is merged into your main
-> branch, change the `branch:` line in `render.yaml` to your default branch.
+> The `render.yaml` deploys your `main` branch, which now contains all the latest
+> features.
 
 ### 2. Set the three secrets
 Render will prompt for the values marked "sync:false" (or set them under the web
