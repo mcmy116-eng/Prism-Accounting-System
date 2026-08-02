@@ -1,0 +1,52 @@
+# Render Blueprint — one-click deploy of the Prism Accounting System.
+#
+# In the Render dashboard: New + → Blueprint → connect this repo → Render reads
+# this file and provisions everything below. See docs/DEPLOY_RENDER.md for the
+# full walkthrough (including the two secrets you must set: ADMIN_PASSWORD and
+# ANTHROPIC_API_KEY).
+#
+# What this provisions:
+#   • a Dockerized Flask web service (always-on)
+#   • a managed PostgreSQL database (data persists, unlike SQLite on a container)
+#   • a 1 GB persistent disk for uploaded receipts / bill PDFs / the logo
+#   • a pre-deploy step that seeds the chart of accounts + first admin user
+
+databases:
+  - name: prism-accounting-db
+    databaseName: prism_accounting
+    plan: basic-256mb          # small paid tier that persists; use "free" only for a 30-day trial
+
+services:
+  - type: web
+    name: prism-accounting
+    runtime: docker
+    plan: starter              # ~US$7/mo, always-on. "free" also works but sleeps when idle.
+    dockerfilePath: ./Dockerfile
+    branch: claude/prism-accounting-system-m97iv8   # change to your default branch once merged
+    autoDeploy: true
+    healthCheckPath: /auth/login
+    # Runs once before each deploy. seed.py is idempotent: it creates the chart of
+    # accounts, currencies, tax rates, cost centers and the first admin only if missing.
+    preDeployCommand: "python seed.py"
+    disk:
+      name: uploads
+      mountPath: /app/uploads
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: prism-accounting-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true            # Render generates a strong random key
+      - key: UPLOAD_FOLDER
+        value: /app/uploads
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      # ---- Secrets you set in the Render dashboard (sync:false = not stored in git) ----
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ANTHROPIC_API_KEY          # needed for AI receipt/bill reading
+        sync: false

@@ -81,7 +81,16 @@ This app needs two things that don't exist on most "ephemeral filesystem" hosts 
 default: a **persistent database** and **persistent file storage** for uploaded bills.
 Two straightforward options:
 
-### Option A — Railway / Render / Fly.io with a volume + Postgres (recommended)
+### Option A — Render one-click Blueprint (recommended, easiest)
+
+The repo ships a `render.yaml` Blueprint that provisions the web service, a managed
+PostgreSQL database, and a persistent disk for uploads in one step. In Render:
+**New + → Blueprint → pick this repo → Apply**, then set `ADMIN_EMAIL`,
+`ADMIN_PASSWORD`, and `ANTHROPIC_API_KEY`. Full click-by-click walkthrough (with a
+note on custom domains and why not Netlify) is in
+[`docs/DEPLOY_RENDER.md`](docs/DEPLOY_RENDER.md).
+
+### Option B — Railway / Render / Fly.io manual setup with a volume + Postgres
 
 1. Create a Postgres database on the platform and set `DATABASE_URL` to it (swap
    `postgres://` → `postgresql://` if needed; SQLAlchemy requires the latter).
@@ -95,7 +104,7 @@ Two straightforward options:
    only read once (skipped if the admin user already exists), but there's no reason to
    leave a plaintext password sitting in platform env vars indefinitely.
 
-### Option B — Single VM / Docker Compose
+### Option C — Single VM / Docker Compose
 
 Run the container behind a reverse proxy (Caddy/nginx) with TLS, mount a host volume
 for `/app/instance` and `/app/uploads`, and either keep SQLite (fine for a small team)
