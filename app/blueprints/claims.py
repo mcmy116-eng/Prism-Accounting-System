@@ -265,7 +265,9 @@ def upload(claim_id):
             except ValueError:
                 exp_date = None
         if data.get("currency_code"):
-            claim.currency_code = data["currency_code"]
+            cc = str(data["currency_code"]).strip().upper()
+            if len(cc) == 3 and cc.isalpha():   # ignore junk; column is CHAR(3) on Postgres
+                claim.currency_code = cc
 
         line_items = data.get("line_items") or []
         if not line_items and data.get("total") is not None:
@@ -302,6 +304,10 @@ def upload(claim_id):
         doc.extraction_status = DocStatus.FAILED.value
         doc.extraction_error = str(e)
         flash(f"Couldn't auto-read that receipt ({e}). Add the expense line manually.", "error")
+    except Exception as e:  # noqa: BLE001 — a parsing surprise must never 500 the upload
+        doc.extraction_status = DocStatus.FAILED.value
+        doc.extraction_error = str(e)[:500]
+        flash("Couldn't auto-read that receipt — add the expense line manually.", "error")
 
     db.session.commit()
     return redirect(url_for("claims.detail", claim_id=claim.id))

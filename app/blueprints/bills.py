@@ -97,9 +97,11 @@ def upload():
                 except ValueError:
                     pass
             if data.get("currency_code"):
-                bill.currency_code = data["currency_code"]
+                cc = str(data["currency_code"]).strip().upper()
+                if len(cc) == 3 and cc.isalpha():   # ignore junk; column is CHAR(3) on Postgres
+                    bill.currency_code = cc
             if data.get("vendor_reference"):
-                bill.vendor_ref = data["vendor_reference"]
+                bill.vendor_ref = str(data["vendor_reference"]).strip()[:80]
 
             vendor_contact = _guess_vendor_contact(data.get("vendor_name"))
             if vendor_contact:
@@ -131,6 +133,10 @@ def upload():
             doc.extraction_status = DocStatus.FAILED.value
             doc.extraction_error = str(e)
             flash(f"AI extraction failed ({e}). You can still fill this bill in manually below.", "error")
+        except Exception as e:  # noqa: BLE001 — a parsing surprise must never 500 the upload
+            doc.extraction_status = DocStatus.FAILED.value
+            doc.extraction_error = str(e)[:500]
+            flash("Couldn't read this document automatically — fill in the details manually below.", "error")
 
         db.session.commit()
         return redirect(url_for("bills.review", bill_id=bill.id))
