@@ -42,6 +42,7 @@ def create_app():
     from app.blueprints.reports import bp as reports_bp
     from app.blueprints.settings import bp as settings_bp
     from app.blueprints.claims import bp as claims_bp
+    from app.blueprints.integrations import bp as integrations_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -54,6 +55,7 @@ def create_app():
     app.register_blueprint(reports_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(claims_bp)
+    app.register_blueprint(integrations_bp)
 
     from app.models import money as money_fn
     app.jinja_env.filters["money"] = money_fn

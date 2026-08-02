@@ -27,6 +27,7 @@
       <div class="section-label">Banking</div>
       <a href="{{ url_for('bank.index') }}" class="{{ 'active' if request.blueprint=='bank' }}">Bank Accounts</a>
       <a href="{{ url_for('payments.index') }}" class="{{ 'active' if request.blueprint=='payments' }}">Payments</a>
+      <a href="{{ url_for('integrations.index') }}" class="{{ 'active' if request.blueprint=='integrations' }}">Sales Channels</a>
       <div class="section-label">Books</div>
       <a href="{{ url_for('accounts.index') }}" class="{{ 'active' if request.blueprint=='accounts' }}">Chart of Accounts</a>
       <a href="{{ url_for('reports.index') }}" class="{{ 'active' if request.blueprint=='reports' }}">Reports</a>

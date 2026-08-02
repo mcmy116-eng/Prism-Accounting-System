@@ -4,6 +4,41 @@ A running log of what happened on this project, in plain language, session by se
 
 ---
 
+## 2026-08-02 (later still) — Shopify sales sync
+
+**Why:** manually re-keying e-commerce sales is the biggest time sink for an online
+business. This pulls orders from Shopify straight into the books. Chosen as the first
+automation because the chart of accounts was already built for it (1030 Payment
+Processor Clearing, 4000/4100/4950 revenue-side, 5100 fees, 2200 tax).
+
+**What we built — a new "Sales Channels" area:**
+- Connect a Shopify store (domain + Admin API token, `read_orders` scope), **Test
+  connection**, and **Sync now** for a date range.
+- Each order books as **one balanced journal entry**: total → Payment Processor
+  Clearing, with revenue / shipping / tax / discounts split out, and an optional
+  processor-fee % accrued to Merchant Fees. Revenue is the balancing figure so the
+  entry always ties out even with tips/rounding.
+- **Currency:** the store sells in USD, books are in HKD — amounts convert at an FX
+  rate you set on the integration. Revenue can be **tagged to a segment** (e.g. ECOM)
+  so P&L-by-segment stays meaningful.
+- **Idempotent:** a `SyncedOrder` record per order means re-running a range skips
+  anything already booked — no double counting.
+- New pieces: `SalesIntegration` + `SyncedOrder` models, `app/shopify_sync.py`
+  (Admin GraphQL client with an injectable transport for testing), and the
+  `integrations` blueprint + page.
+
+**Grounded in the real store:** the connected Shopify store is **Lunara**
+(lunara-global.com, USD, Hong Kong) — currently **0 orders**, so the mapping was
+verified against canned order fixtures: entries balance, FX + fee math is exact,
+revenue tags to ECOM, and re-syncs are idempotent. Ready to run against real orders
+once the store has sales and a token is pasted in.
+
+**Still approximate / next:** processor fees are a flat % (not pulled from Shopify
+Payments payouts yet), refunds/edits aren't reconciled after first import, and syncs
+are manual (a scheduled auto-sync + Stripe are the follow-ups).
+
+---
+
 ## 2026-08-02 (later) — Report exports: Excel, PDF & CSV
 
 **Why:** to hand the books to an accountant or tax filer, you need the statements

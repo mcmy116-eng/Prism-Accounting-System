@@ -183,9 +183,11 @@ easy re-use; PDFs are formatted for accountant hand-off.
 - **Phase 2 — Reporting & export depth** _(export done)_: **PDF/Excel/CSV export of
   every statement is now live**; still to come — saved report filters and a
   scheduled month-end management-accounts pack.
-- **Phase 3 — Automation & integrations**: Shopify/Stripe daily sales sync, live FX
-  rates, automated bank feeds, recurring-bill reminders, email notifications on
-  claim status changes.
+- **Phase 3 — Automation & integrations** _(Shopify sync live)_: **Shopify order sync
+  is built** — connect a store under Sales Channels and each order books as a balanced
+  journal entry with FX conversion and idempotent re-syncs. Still to come: Stripe,
+  scheduled/automatic syncs, live FX rates, automated bank feeds, recurring-bill
+  reminders, and email notifications on claim status changes.
 - **Phase 4 — Multi-company / group**: consolidation across Prism Group entities,
   inter-company transactions, per-entity permissions.
 

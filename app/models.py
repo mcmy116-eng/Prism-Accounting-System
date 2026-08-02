@@ -538,6 +538,63 @@ class AuditLog(db.Model):
     user = db.relationship("User")
 
 
+class SalesIntegration(db.Model):
+    """Connection to an external sales channel (Shopify today; Stripe/others later).
+
+    Holds the credentials and the accounting choices (FX rate, optional processor
+    fee %, and which GL accounts to post to) used when importing orders as
+    balanced journal entries.
+    """
+    __tablename__ = "sales_integrations"
+    id = db.Column(db.Integer, primary_key=True)
+    provider = db.Column(db.String(20), default="shopify")     # shopify | stripe
+    name = db.Column(db.String(120), default="")               # friendly label, e.g. "Lunara"
+    shop_domain = db.Column(db.String(200), default="")        # e.g. lunara-global.com or *.myshopify.com
+    access_token = db.Column(db.String(255), default="")       # Admin API access token (shpat_...)
+    api_version = db.Column(db.String(20), default="2024-10")
+    store_currency = db.Column(db.String(3), default="USD")
+    fx_rate = db.Column(db.Float, default=1.0)                 # 1 store-currency unit = fx_rate base units
+    fee_percent = db.Column(db.Float, default=0.0)            # optional processor fee % to accrue
+    # GL account codes the sync posts to (defaults match the seeded chart)
+    clearing_code = db.Column(db.String(20), default="1030")
+    revenue_code = db.Column(db.String(20), default="4000")
+    shipping_code = db.Column(db.String(20), default="4100")
+    discount_code = db.Column(db.String(20), default="4950")
+    tax_code = db.Column(db.String(20), default="2200")
+    fee_code = db.Column(db.String(20), default="5100")
+    cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"), nullable=True)
+    active = db.Column(db.Boolean, default=True)
+    last_sync_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=now)
+
+    cost_center = db.relationship("CostCenter")
+
+    def masked_token(self):
+        t = self.access_token or ""
+        return (t[:6] + "…" + t[-4:]) if len(t) > 12 else ("set" if t else "")
+
+
+class SyncedOrder(db.Model):
+    """One imported external order -> one journal entry. The unique (integration,
+    external_id) key makes re-syncing a date range safe: an order already booked
+    is skipped, never double-posted."""
+    __tablename__ = "synced_orders"
+    id = db.Column(db.Integer, primary_key=True)
+    integration_id = db.Column(db.Integer, db.ForeignKey("sales_integrations.id"), nullable=False)
+    external_id = db.Column(db.String(120), nullable=False)   # Shopify order GID
+    order_number = db.Column(db.String(40), default="")       # e.g. #1001
+    order_date = db.Column(db.Date, nullable=True)
+    currency = db.Column(db.String(3), default="")
+    gross_cents = db.Column(db.Integer, default=0)            # order total in base currency
+    journal_entry_id = db.Column(db.Integer, db.ForeignKey("journal_entries.id"), nullable=True)
+    synced_at = db.Column(db.DateTime, default=now)
+
+    integration = db.relationship("SalesIntegration")
+    journal_entry = db.relationship("JournalEntry")
+
+    __table_args__ = (db.UniqueConstraint("integration_id", "external_id", name="uq_synced_order"),)
+
+
 class CategoryRule(db.Model):
     """Learned mapping from a keyword (merchant / description token) to a GL
     account, reinforced each time a human approves a categorisation. Drives the

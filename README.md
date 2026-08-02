@@ -29,6 +29,12 @@ financial statements out the other end.
 - **Anomaly flags** — claims are flagged for missing receipts, unusually large
   amounts, and possible duplicates.
 - **CSV export** — expense claims export to line-level CSV.
+- **Sales channels (Shopify sync)** — connect a Shopify store and import its orders
+  straight into the ledger. Each order books as one balanced journal entry (revenue,
+  shipping, tax and discounts split out; total to *Payment Processor Clearing*), the
+  store currency is converted to base at your FX rate, an optional processor-fee % can
+  accrue, revenue can be tagged to a segment, and re-syncing a date range never
+  double-counts.
 - **Bank accounts & reconciliation** — CSV statement import, transaction matching
   against ledger entries, quick-entry posting for fees/interest.
 - **Multi-user & roles** — admin / bookkeeper / staff / viewer.
@@ -151,9 +157,11 @@ gets created — you just fill in the fields yourself on the same review screen.
 - Cash flow statement uses the indirect method with a simplified operating/investing/
   financing split — good enough for internal use, have an accountant sanity-check it
   before filing anything official.
-- No e-commerce platform integration yet (Shopify/Stripe order sync) — revenue is
-  entered via invoices or manual journal entries. A CSV/API import for daily sales
-  batches would be a natural next addition.
+- Shopify order sync is built in (**Sales Channels**): connect a store, and each order
+  imports as one balanced journal entry (revenue / shipping / tax / discounts split out,
+  store currency converted to base at a set FX rate, optional processor-fee accrual,
+  idempotent re-syncs). Stripe and automatic scheduled syncs are the next additions;
+  processor fees and refunds are approximate/manual for now.
 - Single base currency for reporting; per-transaction FX rates are stored but not
   yet auto-fetched from a live rate feed.
 - No automated bank feed (Plaid/Yodlee) — statements are imported via CSV.

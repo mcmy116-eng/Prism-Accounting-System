@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Sales Channels{% endblock %}
+{% block page_title %}Sales Channels{% endblock %}
+{% block content %}
+
+<div class="card">
+  <p class="muted" style="margin:0;">
+    Connect a Shopify store to import its orders straight into the ledger. Each order is
+    booked as one balanced journal entry — sales revenue, shipping, tax and discounts split
+    out, and the total posted to <strong>Payment Processor Clearing (1030)</strong>. Amounts in
+    the store currency are converted to your base currency at the FX rate you set. Re-running a
+    date range is safe: orders already booked are skipped, never double-counted.
+  </p>
+</div>
+
+{% macro shopify_form(integ) %}
+<form method="post" action="{{ url_for('integrations.save_shopify') }}">
+  {% if integ %}<input type="hidden" name="id" value="{{ integ.id }}">{% endif %}
+  <div class="grid grid-2">
+    <div class="field"><label>Store label</label>
+      <input name="name" placeholder="Lunara" value="{{ integ.name if integ else '' }}"></div>
+    <div class="field"><label>Store domain</label>
+      <input name="shop_domain" placeholder="your-store.myshopify.com" value="{{ integ.shop_domain if integ else '' }}"></div>
+    <div class="field"><label>Admin API access token</label>
+      <input name="access_token" type="password" autocomplete="off"
+             placeholder="{{ 'leave blank to keep current' if integ and integ.access_token else 'shpat_…' }}"
+             value="">
+      {% if integ and integ.access_token %}<small class="muted">Currently set: {{ integ.masked_token() }}</small>{% endif %}
+    </div>
+    <div class="field"><label>Store currency</label>
+      <input name="store_currency" maxlength="3" value="{{ integ.store_currency if integ else 'USD' }}"></div>
+    <div class="field"><label>FX rate (1 store unit → base currency)</label>
+      <input name="fx_rate" type="number" step="0.0001" value="{{ integ.fx_rate if integ else '7.8000' }}"></div>
+    <div class="field"><label>Processor fee % <span class="muted">(optional, accrues to 5100)</span></label>
+      <input name="fee_percent" type="number" step="0.01" value="{{ integ.fee_percent if integ else '0' }}"></div>
+    <div class="field"><label>Tag revenue to segment</label>
+      <select name="cost_center_id">
+        <option value="">None</option>
+        {% for cc in cost_centers %}
+        <option value="{{ cc.id }}" {{ 'selected' if integ and integ.cost_center_id==cc.id }}>{{ cc.name }}</option>
+        {% endfor %}
+      </select></div>
+    <div class="field" style="align-self:end;">
+      <label><input type="checkbox" name="active" value="1" {{ 'checked' if (integ and integ.active) or not integ }}> Active</label></div>
+  </div>
+  <button class="btn btn-primary" type="submit">{{ 'Save changes' if integ else 'Connect store' }}</button>
+</form>
+{% endmacro %}
+
+{% for integ in integrations %}
+<div class="card">
+  <div class="toolbar" style="justify-content:space-between;align-items:center;">
+    <h2 style="margin:0;">{{ integ.name or integ.shop_domain or 'Shopify store' }}
+      <span class="badge {{ 'badge-approved' if integ.active else 'badge-void' }}">{{ 'Active' if integ.active else 'Disabled' }}</span></h2>
+    <div class="muted">Last sync: {{ integ.last_sync_at.strftime('%Y-%m-%d %H:%M') if integ.last_sync_at else 'never' }}</div>
+  </div>
+
+  {% if current_user.can_edit() %}
+  <div class="grid grid-2" style="margin-top:8px;">
+    <form method="post" action="{{ url_for('integrations.run_sync', iid=integ.id) }}">
+      <h3>Import orders</h3>
+      <div class="filters">
+        <label>From <input type="date" name="start" value="{{ start }}"></label>
+        <label>To <input type="date" name="end" value="{{ end }}"></label>
+        <button class="btn btn-primary" type="submit">Sync now</button>
+      </div>
+      <small class="muted">Books every order created in this range that isn't already in the ledger.</small>
+    </form>
+    <div>
+      <h3>Connection</h3>
+      <form method="post" action="{{ url_for('integrations.test', iid=integ.id) }}" style="display:inline;">
+        <button class="btn btn-sm" type="submit">Test connection</button>
+      </form>
+      {% if current_user.is_admin() %}
+      <form method="post" action="{{ url_for('integrations.delete', iid=integ.id) }}" style="display:inline;"
+            onsubmit="return confirm('Remove this integration?');">
+        <button class="btn btn-sm btn-danger" type="submit">Remove</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <details style="margin-top:14px;">
+    <summary>Edit connection &amp; accounting settings</summary>
+    <div style="margin-top:12px;">{{ shopify_form(integ) }}</div>
+  </details>
+  {% endif %}
+</div>
+{% endfor %}
+
+{% if current_user.can_edit() %}
+<div class="card">
+  <h2>Connect a Shopify store</h2>
+  <p class="muted">Create an Admin API access token in Shopify (Settings → Apps and sales channels →
+    Develop apps → your app → API credentials) with <code>read_orders</code> scope, then paste it here.</p>
+  {{ shopify_form(none) }}
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Recently imported orders</h2>
+  {% if recent %}
+  <table>
+    <thead><tr><th>Order</th><th>Date</th><th>Store</th><th class="num">Total (base)</th><th>Journal</th><th>Imported</th></tr></thead>
+    <tbody>
+      {% for o in recent %}
+      <tr>
+        <td>{{ o.order_number }}</td>
+        <td>{{ o.order_date }}</td>
+        <td>{{ o.integration.name or o.integration.shop_domain }}</td>
+        <td class="num">{{ o.gross_cents | money }}</td>
+        <td>{% if o.journal_entry_id %}JE#{{ o.journal_entry_id }}{% endif %}</td>
+        <td class="muted">{{ o.synced_at.strftime('%Y-%m-%d %H:%M') if o.synced_at else '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No orders imported yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
