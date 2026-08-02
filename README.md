@@ -36,7 +36,9 @@ financial statements out the other end.
 - **Cost centers / segments** — pre-seeded with E-commerce, Digital Marketing
   Services, and General & Admin so you can see P&L by business line.
 - **Reports** — P&L (overall and by segment), Balance Sheet, Cash Flow (indirect
-  method), Trial Balance, AR/AP Aging, Tax Summary, Budget vs Actual.
+  method), Trial Balance, AR/AP Aging, Tax Summary, Budget vs Actual. Every core
+  statement **exports to CSV, Excel (.xlsx) and PDF** with the same date/segment
+  filters as the on-screen view.
 
 ## Tech stack
 

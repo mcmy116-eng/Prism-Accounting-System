@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Trial Balance{% endblock %}
 {% block page_title %}Trial Balance{% endblock %}
+{% block topbar_actions %}{% set slug = 'trial-balance' %}{% include 'reports/_export.html' %}{% endblock %}
 {% block content %}
 <div class="card">
   <form method="get" class="toolbar">

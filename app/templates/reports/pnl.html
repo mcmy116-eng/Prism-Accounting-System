@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Profit & Loss{% endblock %}
 {% block page_title %}Profit &amp; Loss{% endblock %}
+{% block topbar_actions %}{% set slug = 'pnl' %}{% include 'reports/_export.html' %}{% endblock %}
 {% block content %}
 <div class="card">
   <form method="get" class="toolbar">

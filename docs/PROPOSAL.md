@@ -144,9 +144,11 @@ approve queue**, overdue invoices, and recent ledger activity. Claims surface
 **Reports (built):** Profit & Loss (overall + by segment), Balance Sheet, Cash Flow,
 Trial Balance, AR/AP Aging, Tax Summary, Budget vs Actual.
 
-**Export (new):** Expense claims export to **CSV** (line-level, filterable). The
-data model is structured for further exports and P&L / cash-flow / AP / AR
-reporting, and for management accounts.
+**Export:** Every core statement (P&L, Balance Sheet, Cash Flow, Trial Balance,
+AR/AP Aging, Tax Summary) exports to **CSV, Excel (.xlsx) and PDF** using the same
+date/segment filters as the on-screen report, so the file always matches the view.
+Expense claims export to line-level CSV. The Excel files use real numeric cells for
+easy re-use; PDFs are formatted for accountant hand-off.
 
 ---
 
@@ -178,8 +180,9 @@ reporting, and for management accounts.
   claim workflow (Draft → Submitted → AI Reviewed → Pending Approval →
   Approved/Rejected → Paid), audit log, AI confidence + learning, anomaly flags,
   CSV export, mobile receipt capture.
-- **Phase 2 — Reporting & export depth**: PDF/Excel export of every statement;
-  saved report filters; scheduled month-end management-accounts pack.
+- **Phase 2 — Reporting & export depth** _(export done)_: **PDF/Excel/CSV export of
+  every statement is now live**; still to come — saved report filters and a
+  scheduled month-end management-accounts pack.
 - **Phase 3 — Automation & integrations**: Shopify/Stripe daily sales sync, live FX
   rates, automated bank feeds, recurring-bill reminders, email notifications on
   claim status changes.

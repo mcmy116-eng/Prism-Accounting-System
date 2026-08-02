@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ "AR" if kind == "invoice" else "AP" }} Aging{% endblock %}
 {% block page_title %}{{ "Accounts Receivable Aging" if kind == "invoice" else "Accounts Payable Aging" }}{% endblock %}
+{% block topbar_actions %}{% set slug = 'ar-aging' if kind == 'invoice' else 'ap-aging' %}{% include 'reports/_export.html' %}{% endblock %}
 {% block content %}
 <div class="grid grid-4" style="grid-template-columns:repeat(5,1fr);">
   {% for bucket, amt in buckets.items() %}

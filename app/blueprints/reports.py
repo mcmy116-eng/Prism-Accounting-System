@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, Response, abort
 from flask_login import login_required
 from sqlalchemy import func
 
@@ -9,8 +9,38 @@ from app.models import (
     CostCenter, Budget, money,
 )
 from app.ledger import trial_balance as tb_calc
+from app.report_builder import BUILDERS
+from app.report_export import FORMATS
 
 bp = Blueprint("reports", __name__, url_prefix="/reports")
+
+
+@bp.route("/<report_slug>/export.<fmt>")
+@login_required
+def export(report_slug, fmt):
+    """Download any core statement as CSV, Excel (.xlsx) or PDF.
+
+    Uses the same period/as-of/cost-centre query params as the on-screen report
+    so the file matches exactly what's displayed.
+    """
+    if report_slug not in BUILDERS or fmt not in FORMATS:
+        abort(404)
+    builder, kind = BUILDERS[report_slug]
+    if kind == "period_cc":
+        start, end = _period_bounds()
+        rep = builder(start, end, request.args.get("cost_center_id", type=int))
+    elif kind == "period":
+        start, end = _period_bounds()
+        rep = builder(start, end)
+    elif kind == "as_of":
+        as_of = request.args.get("as_of")
+        rep = builder(date.fromisoformat(as_of) if as_of else date.today())
+    else:  # as_of_opt — report defaults to today
+        rep = builder()
+    serializer, mimetype = FORMATS[fmt]
+    resp = Response(serializer(rep), mimetype=mimetype)
+    resp.headers["Content-Disposition"] = f"attachment; filename={rep.filename}.{fmt}"
+    return resp
 
 
 def _period_bounds():

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Cash Flow{% endblock %}
 {% block page_title %}Cash Flow Statement{% endblock %}
+{% block topbar_actions %}{% set slug = 'cash-flow' %}{% include 'reports/_export.html' %}{% endblock %}
 {% block content %}
 <div class="card">
   <form method="get" class="toolbar">

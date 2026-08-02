@@ -4,6 +4,32 @@ A running log of what happened on this project, in plain language, session by se
 
 ---
 
+## 2026-08-02 (later) — Report exports: Excel, PDF & CSV
+
+**Why:** to hand the books to an accountant or tax filer, you need the statements
+out of the screen and into files. Started here because it needs nothing from you
+(no store keys, no login change, no tax decision) and every SME needs it.
+
+**What we built:** every core statement — Profit & Loss, Balance Sheet, Cash Flow,
+Trial Balance, AR Aging, AP Aging, Tax Summary — now has **CSV / Excel / PDF**
+download buttons on its page. The export uses the *same* period/date/segment
+filters as the on-screen report, so the file always matches what you see.
+- Excel files use real numeric cells (so you can sum/pivot them) with bold
+  section/total rows; PDFs are cleanly formatted for accountant hand-off.
+- New building blocks: `app/report_builder.py` (one structured report definition
+  per statement, reusing the exact ledger math) and `app/report_export.py`
+  (CSV/Excel/PDF serializers). Added `openpyxl` for Excel; PDF uses reportlab,
+  already in the stack.
+
+**Tested:** all 7 statements × 3 formats download and are well-formed (Excel
+re-opens, PDFs are valid), and the numbers tie out to the ledger (e.g. the posted
+test claim shows Net income −240 and the trial balance stays balanced 240 = 240).
+
+**Still open / next choices** (your call): Shopify/Stripe sales sync, email
+notifications on claim status, staff invite-based onboarding, and Google login / 2FA.
+
+---
+
 ## 2026-08-02 — Staff expense claims, audit trail, smarter AI
 
 **Why:** Prism is now live and trading, and the brief asked for staff expense

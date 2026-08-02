@@ -1,0 +1,6 @@
+<div class="filters">
+  <span class="muted" style="align-self:center;">Export:</span>
+  <a class="btn btn-sm" href="{{ url_for('reports.export', report_slug=slug, fmt='csv') }}{% if request.query_string %}?{{ request.query_string.decode() }}{% endif %}">CSV</a>
+  <a class="btn btn-sm" href="{{ url_for('reports.export', report_slug=slug, fmt='xlsx') }}{% if request.query_string %}?{{ request.query_string.decode() }}{% endif %}">Excel</a>
+  <a class="btn btn-sm" href="{{ url_for('reports.export', report_slug=slug, fmt='pdf') }}{% if request.query_string %}?{{ request.query_string.decode() }}{% endif %}">PDF</a>
+</div>
