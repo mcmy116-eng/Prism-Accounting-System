@@ -10,6 +10,7 @@ SYSTEM_CODES = {
     "2000": "Accounts Payable",
     "2200": "VAT / Sales Tax Payable",
     "1500": "VAT / Tax Receivable",
+    "2550": "Employee Reimbursements Payable",
 }
 
 

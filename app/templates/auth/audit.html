@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+{% block page_title %}Audit Log{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <div class="filters">
+      <a href="{{ url_for('auth.audit_log') }}" class="btn btn-sm {{ 'btn-primary' if not entity }}">All</a>
+      {% for e in entities %}
+      <a href="{{ url_for('auth.audit_log', entity=e) }}" class="btn btn-sm {{ 'btn-primary' if entity==e }}">{{ e }}</a>
+      {% endfor %}
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>When (UTC)</th><th>User</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td class="muted">{{ log.at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{{ log.user_name or "—" }}</td>
+        <td><span class="badge badge-{{ log.action if log.action in ['approved','paid','rejected'] else 'draft' }}">{{ log.action }}</span></td>
+        <td class="muted">{{ log.entity_type }}{% if log.entity_id %} #{{ log.entity_id }}{% endif %}</td>
+        <td>{{ log.summary }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="empty-state">No activity logged yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

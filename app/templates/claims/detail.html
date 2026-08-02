@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}{{ claim.number }}{% endblock %}
+{% block page_title %}{{ claim.number }} — {{ claim.title or "Expense claim" }}{% endblock %}
+{% block content %}
+
+{% set order = ['draft','ai_reviewed','pending_approval','approved','paid'] %}
+{% set labels = {'draft':'Draft','ai_reviewed':'AI Reviewed','pending_approval':'Pending Approval','approved':'Approved','paid':'Paid'} %}
+{% set rank = {'draft':0,'ai_reviewed':1,'submitted':2,'clarification':0,'pending_approval':2,'rejected':2,'approved':3,'paid':4} %}
+{% set cur = rank.get(claim.status, 0) %}
+<div class="workflow">
+  {% for s in order %}
+    {% set i = loop.index0 %}
+    <span class="step {{ 'current' if i==cur else ('done' if i<cur else '') }}">{{ labels[s] }}</span>
+  {% endfor %}
+  {% if claim.status == 'rejected' %}<span class="step" style="background:var(--error-bg);color:var(--error);">Rejected</span>{% endif %}
+  {% if claim.status == 'clarification' %}<span class="step" style="background:var(--warn-bg);color:var(--warn);">Needs clarification</span>{% endif %}
+</div>
+
+{% if flags %}
+<div class="card" style="border-color:var(--warn);">
+  <strong>For review:</strong>
+  {% for cls, label in flags %}<span class="flag flag-{{ cls }}">{{ label }}</span>{% endfor %}
+</div>
+{% endif %}
+
+{% if claim.reviewer_notes and claim.status in ['clarification','rejected'] %}
+<div class="flash {{ 'error' if claim.status=='rejected' else 'info' }}">
+  <strong>{{ 'Rejected:' if claim.status=='rejected' else 'Clarification requested:' }}</strong> {{ claim.reviewer_notes }}
+</div>
+{% endif %}
+
+<div class="grid grid-2">
+  <div>
+    <!-- Claim details / editable header + lines -->
+    <div class="card">
+      <div class="toolbar">
+        <div>
+          <span class="badge badge-{{ claim.status }}">{{ claim.status.replace('_',' ') }}</span>
+          <span class="muted">· {{ claim.staff.name }} · {{ claim.claim_date }}</span>
+        </div>
+        <div><strong>{{ claim.currency_code }} {{ claim.total_cents | money }}</strong></div>
+      </div>
+
+      {% if claim.ai_summary %}
+      <p class="muted" style="margin-top:0;">🤖 {{ claim.ai_summary }}
+        {% if claim.ai_confidence is not none %}· average confidence {{ (claim.ai_confidence*100)|round|int }}%{% endif %}
+      </p>
+      {% endif %}
+
+      {% if editable %}
+      <form method="post" action="{{ url_for('claims.save', claim_id=claim.id) }}">
+        <div class="field">
+          <label>Title</label>
+          <input type="text" name="title" value="{{ claim.title }}">
+        </div>
+        <div class="field">
+          <label>Business purpose</label>
+          <textarea name="business_purpose" rows="2">{{ claim.business_purpose }}</textarea>
+        </div>
+        <div class="grid grid-2">
+          <div class="field"><label>Claim date</label><input type="date" name="claim_date" value="{{ claim.claim_date }}"></div>
+          <div class="field"><label>Department</label>
+            <select name="cost_center_id">
+              <option value="">— none —</option>
+              {% for cc in cost_centers %}<option value="{{ cc.id }}" {{ 'selected' if claim.cost_center_id==cc.id }}>{{ cc.name }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <h3>Expense lines</h3>
+        <table class="line-items-table" id="lines">
+          <thead><tr><th>Merchant</th><th>Date</th><th>Description</th><th>Category (GL)</th><th>Tax</th><th class="num">Amount</th><th></th></tr></thead>
+          <tbody>
+          {% for l in claim.lines %}
+            <tr>
+              <td><input name="line_merchant[]" value="{{ l.merchant }}"></td>
+              <td><input type="date" name="line_date[]" value="{{ l.expense_date or '' }}"></td>
+              <td><input name="line_description[]" value="{{ l.description }}"></td>
+              <td>
+                <select name="line_account[]">
+                  <option value="">— pick —</option>
+                  {% for a in expense_accounts %}<option value="{{ a.id }}" {{ 'selected' if l.account_id==a.id }}>{{ a.code }} {{ a.name }}</option>{% endfor %}
+                </select>
+                {% if l.ai_confidence is not none %}
+                  {% set c = (l.ai_confidence*100)|round|int %}
+                  <div class="conf {{ 'high' if c>=75 else ('med' if c>=45 else 'low') }}">
+                    <span class="bar"><span style="width:{{ c }}%"></span></span> AI {{ c }}%
+                  </div>
+                {% endif %}
+                <input type="hidden" name="line_guess[]" value="{{ l.category_guess }}">
+              </td>
+              <td>
+                <select name="line_tax[]">
+                  <option value="">—</option>
+                  {% for t in tax_rates %}<option value="{{ t.id }}" {{ 'selected' if l.tax_rate_id==t.id }}>{{ t.name }}</option>{% endfor %}
+                </select>
+              </td>
+              <td class="num"><input class="num" name="line_amount[]" value="{{ (l.amount_cents/100)|round(2) }}"></td>
+              <td><button type="button" class="remove-line" onclick="this.closest('tr').remove()">×</button></td>
+              <td style="display:none;"><input name="line_cost_center[]" value=""></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        <button type="button" class="btn btn-sm" onclick="addLine()">+ Add line</button>
+        <div style="margin-top:14px;">
+          <button class="btn btn-primary" type="submit">Save</button>
+        </div>
+      </form>
+
+      <template id="line-template">
+        <tr>
+          <td><input name="line_merchant[]"></td>
+          <td><input type="date" name="line_date[]"></td>
+          <td><input name="line_description[]"></td>
+          <td>
+            <select name="line_account[]">
+              <option value="">— pick —</option>
+              {% for a in expense_accounts %}<option value="{{ a.id }}">{{ a.code }} {{ a.name }}</option>{% endfor %}
+            </select>
+            <input type="hidden" name="line_guess[]" value="">
+          </td>
+          <td>
+            <select name="line_tax[]"><option value="">—</option>
+              {% for t in tax_rates %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+            </select>
+          </td>
+          <td class="num"><input class="num" name="line_amount[]"></td>
+          <td><button type="button" class="remove-line" onclick="this.closest('tr').remove()">×</button></td>
+          <td style="display:none;"><input name="line_cost_center[]" value=""></td>
+        </tr>
+      </template>
+      <script>
+        function addLine(){
+          var t = document.getElementById('line-template');
+          document.querySelector('#lines tbody').appendChild(t.content.cloneNode(true));
+        }
+      </script>
+
+      {% else %}
+      <!-- read-only line view -->
+      <table>
+        <thead><tr><th>Merchant</th><th>Description</th><th>Category</th><th>AI</th><th class="num">Amount</th></tr></thead>
+        <tbody>
+        {% for l in claim.lines %}
+          <tr>
+            <td>{{ l.merchant or "—" }}</td>
+            <td>{{ l.description or "—" }}</td>
+            <td>{{ l.account.name if l.account else "—" }}</td>
+            <td>
+              {% if l.ai_confidence is not none %}{% set c = (l.ai_confidence*100)|round|int %}
+              <span class="conf {{ 'high' if c>=75 else ('med' if c>=45 else 'low') }}"><span class="bar"><span style="width:{{ c }}%"></span></span>{{ c }}%</span>
+              {% else %}—{% endif %}
+            </td>
+            <td class="num">{{ claim.currency_code }} {{ l.amount_cents | money }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="empty-state">No expense lines yet.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
+      <table class="totals" style="margin-top:12px;">
+        <tr><td>Subtotal</td><td class="num">{{ claim.currency_code }} {{ claim.subtotal_cents | money }}</td></tr>
+        <tr><td>Tax</td><td class="num">{{ claim.currency_code }} {{ claim.tax_cents | money }}</td></tr>
+        <tr class="grand"><td>Total</td><td class="num">{{ claim.currency_code }} {{ claim.total_cents | money }}</td></tr>
+      </table>
+    </div>
+
+    <!-- Actions -->
+    <div class="card">
+      <h3>Actions</h3>
+      {% if claim.staff_id == current_user.id and claim.status in ['draft','clarification','ai_reviewed'] %}
+      <form method="post" action="{{ url_for('claims.submit', claim_id=claim.id) }}" class="inline">
+        <button class="btn btn-primary" type="submit">Submit for approval</button>
+      </form>
+      {% endif %}
+
+      {% if can_approve %}
+        {% if claim.status not in ['approved','paid','rejected'] %}
+        <form method="post" action="{{ url_for('claims.approve', claim_id=claim.id) }}" class="inline">
+          <button class="btn btn-primary" type="submit">Approve &amp; post</button>
+        </form>
+        <details style="margin-top:10px;">
+          <summary class="muted">Request clarification / reject</summary>
+          <form method="post" action="{{ url_for('claims.clarify', claim_id=claim.id) }}" style="margin-top:8px;">
+            <textarea name="notes" rows="2" placeholder="What do you need from the claimant?"></textarea>
+            <button class="btn btn-sm" type="submit">Send back for clarification</button>
+          </form>
+          <form method="post" action="{{ url_for('claims.reject', claim_id=claim.id) }}" style="margin-top:8px;">
+            <textarea name="notes" rows="2" placeholder="Reason for rejection"></textarea>
+            <button class="btn btn-sm btn-danger" type="submit">Reject</button>
+          </form>
+        </details>
+        {% endif %}
+
+        {% if claim.status == 'approved' %}
+        <form method="post" action="{{ url_for('claims.pay', claim_id=claim.id) }}">
+          <div class="field"><label>Reimburse from bank account</label>
+            <select name="bank_account_id" required>
+              <option value="">— choose —</option>
+              {% for b in bank_accounts %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <button class="btn btn-primary" type="submit">Mark paid / reimbursed</button>
+        </form>
+        {% endif %}
+      {% endif %}
+
+      {% if claim.journal_entry_id %}
+      <p class="muted" style="margin-top:12px;">Posted to the ledger · JE #{{ claim.journal_entry_id }}
+        <a href="{{ url_for('accounts.index') }}">view books</a></p>
+      {% endif %}
+      {% if claim.status == 'paid' %}<p class="muted">Reimbursed {{ claim.paid_at.date() if claim.paid_at else '' }}.</p>{% endif %}
+    </div>
+  </div>
+
+  <!-- Receipts column -->
+  <div>
+    <div class="card">
+      <h3>Receipts</h3>
+      {% if editable %}
+      <form method="post" action="{{ url_for('claims.upload', claim_id=claim.id) }}" enctype="multipart/form-data">
+        <div class="field">
+          <label>Add a receipt (photo or PDF)</label>
+          <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif" capture="environment" required>
+          <div class="hint">On a phone this opens the camera. AI will read the merchant, date and amount and suggest a category.</div>
+        </div>
+        <button class="btn btn-primary" type="submit">Upload &amp; read</button>
+      </form>
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+      {% endif %}
+      {% if claim.documents %}
+        {% for d in claim.documents %}
+        <div style="margin-bottom:12px;">
+          <a href="{{ url_for('claims.document_file', doc_id=d.id) }}" target="_blank">{{ d.filename }}</a>
+          <span class="muted"> · {{ d.extraction_status }}</span>
+          {% if d.mimetype and d.mimetype.startswith('image/') %}
+          <div><img class="doc-preview" src="{{ url_for('claims.document_file', doc_id=d.id) }}" alt="receipt" style="max-height:320px;margin-top:6px;"></div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+      <p class="muted">No receipts attached yet.</p>
+      {% endif %}
+    </div>
+
+    {% if claim.business_purpose %}
+    <div class="card"><h3>Business purpose</h3><p>{{ claim.business_purpose }}</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

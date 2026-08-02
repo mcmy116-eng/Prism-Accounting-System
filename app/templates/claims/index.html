@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Expense Claims{% endblock %}
+{% block page_title %}Expense Claims{% endblock %}
+{% block topbar_actions %}
+<div style="display:flex; gap:8px;">
+  <a href="{{ url_for('claims.export_csv') }}" class="btn">Export CSV</a>
+  <a href="{{ url_for('claims.new') }}" class="btn btn-primary">New claim</a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <div class="filters">
+      <a href="{{ url_for('claims.index') }}" class="btn btn-sm {{ 'btn-primary' if not status_filter and not staff_filter }}">All</a>
+      {% for s in statuses %}
+      <a href="{{ url_for('claims.index', status=s, staff=staff_filter) }}" class="btn btn-sm {{ 'btn-primary' if status_filter==s }}">{{ s.replace('_',' ') }}</a>
+      {% endfor %}
+    </div>
+    {% if staff_users %}
+    <form method="get" class="inline">
+      {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+      <select name="staff" onchange="this.form.submit()">
+        <option value="">All staff</option>
+        {% for u in staff_users %}
+        <option value="{{ u.id }}" {{ 'selected' if staff_filter==(u.id|string) }}>{{ u.name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    {% endif %}
+  </div>
+  <table>
+    <thead><tr>
+      <th>Claim</th>{% if staff_users %}<th>Staff</th>{% endif %}<th>Date</th><th>Title</th>
+      <th>Status</th><th>Flags</th><th class="num">Total</th>
+    </tr></thead>
+    <tbody>
+      {% for c in claims %}
+      <tr onclick="location.href='{{ url_for('claims.detail', claim_id=c.id) }}'" style="cursor:pointer;">
+        <td>{{ c.number }}</td>
+        {% if staff_users %}<td>{{ c.staff.name if c.staff else "—" }}</td>{% endif %}
+        <td>{{ c.claim_date }}</td>
+        <td>{{ c.title or "—" }}</td>
+        <td><span class="badge badge-{{ c.status }}">{{ c.status.replace('_',' ') }}</span></td>
+        <td>
+          {% for cls, label in flags_for(c) %}
+          <span class="flag flag-{{ cls }}" title="{{ label }}">{{ label }}</span>
+          {% endfor %}
+        </td>
+        <td class="num">{{ c.currency_code }} {{ c.total_cents | money }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="empty-state">No claims yet. Create one and snap a photo of your receipt.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

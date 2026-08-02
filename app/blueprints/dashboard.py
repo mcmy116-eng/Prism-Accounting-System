@@ -1,10 +1,15 @@
 from datetime import date, timedelta
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, redirect, url_for
 from flask_login import login_required
 from sqlalchemy import func
 
+from flask_login import current_user
+
 from app.extensions import db
-from app.models import Invoice, Bill, Account, AccountType, InvoiceStatus, BillStatus, JournalEntry
+from app.models import (
+    Invoice, Bill, Account, AccountType, InvoiceStatus, BillStatus, JournalEntry,
+    ExpenseClaim, ClaimStatus,
+)
 
 bp = Blueprint("dashboard", __name__, url_prefix="/")
 
@@ -12,6 +17,11 @@ bp = Blueprint("dashboard", __name__, url_prefix="/")
 @bp.route("/")
 @login_required
 def index():
+    # Staff-only claimants have no visibility of company financials — send them
+    # straight to their own claims.
+    if current_user.is_staff_only():
+        return redirect(url_for("claims.index"))
+
     today = date.today()
     start_of_month = today.replace(day=1)
 
@@ -40,10 +50,19 @@ def index():
 
     recent_entries = JournalEntry.query.order_by(JournalEntry.date.desc(), JournalEntry.id.desc()).limit(10).all()
 
+    pending_claims = ExpenseClaim.query.filter(
+        ExpenseClaim.status.in_([ClaimStatus.PENDING_APPROVAL.value, ClaimStatus.SUBMITTED.value])
+    ).order_by(ExpenseClaim.submitted_at).all()
+    pending_claims_total = sum(c.total_cents for c in pending_claims)
+    approved_unpaid = ExpenseClaim.query.filter_by(status=ClaimStatus.APPROVED.value).all()
+    approved_unpaid_total = sum(c.balance_due_cents() for c in approved_unpaid)
+
     return render_template(
         "dashboard/index.html",
         mtd_revenue=mtd_revenue, mtd_expense=mtd_expense,
         total_ar=total_ar, total_ap=total_ap, total_cash=total_cash,
         overdue_invoices=overdue_invoices, recent_entries=recent_entries,
         net_income=mtd_revenue - mtd_expense,
+        pending_claims=pending_claims, pending_claims_total=pending_claims_total,
+        approved_unpaid_total=approved_unpaid_total,
     )

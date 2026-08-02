@@ -30,6 +30,7 @@ def money(cents_value: int) -> str:
 class Role(str, enum.Enum):
     ADMIN = "admin"
     BOOKKEEPER = "bookkeeper"
+    STAFF = "staff"
     VIEWER = "viewer"
 
 
@@ -75,6 +76,21 @@ class DocStatus(str, enum.Enum):
     NONE = "none"
 
 
+class ClaimStatus(str, enum.Enum):
+    DRAFT = "draft"                    # staff still editing
+    SUBMITTED = "submitted"           # sent for processing
+    AI_REVIEWED = "ai_reviewed"       # AI has read the receipts and suggested categories
+    PENDING_APPROVAL = "pending_approval"
+    CLARIFICATION = "clarification"   # admin asked the staffer for more info
+    APPROVED = "approved"             # posted to the ledger, awaiting reimbursement
+    REJECTED = "rejected"
+    PAID = "paid"                     # reimbursed
+
+
+# Statuses at which a claim is still owned/editable by the submitting staffer.
+CLAIM_EDITABLE_STATUSES = {ClaimStatus.DRAFT.value, ClaimStatus.CLARIFICATION.value}
+
+
 class User(UserMixin, db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
@@ -95,6 +111,13 @@ class User(UserMixin, db.Model):
         return self.role == Role.ADMIN.value
 
     def can_edit(self):
+        return self.role in (Role.ADMIN.value, Role.BOOKKEEPER.value)
+
+    def is_staff_only(self):
+        """A claimant with no bookkeeping access — sees only their own expense claims."""
+        return self.role == Role.STAFF.value
+
+    def can_approve_claims(self):
         return self.role in (Role.ADMIN.value, Role.BOOKKEEPER.value)
 
 
@@ -202,6 +225,7 @@ class Document(db.Model):
     extracted_json = db.Column(db.Text, default="")
     extraction_error = db.Column(db.Text, default="")
     bill_id = db.Column(db.Integer, db.ForeignKey("bills.id"), nullable=True)
+    claim_id = db.Column(db.Integer, db.ForeignKey("expense_claims.id"), nullable=True)
 
 
 class JournalEntry(db.Model):
@@ -416,3 +440,115 @@ class Budget(db.Model):
 
     account = db.relationship("Account")
     cost_center = db.relationship("CostCenter")
+
+
+class ExpenseClaim(db.Model):
+    """A staff expense/reimbursement claim: one or more out-of-pocket expenses
+    that flow through Draft -> Submitted -> AI Reviewed -> Pending Approval ->
+    Approved/Rejected -> Paid."""
+    __tablename__ = "expense_claims"
+    id = db.Column(db.Integer, primary_key=True)
+    number = db.Column(db.String(40), unique=True)
+    staff_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    title = db.Column(db.String(200), default="")
+    business_purpose = db.Column(db.Text, default="")
+    claim_date = db.Column(db.Date, default=date.today)
+    currency_code = db.Column(db.String(3), default="HKD")
+    fx_rate = db.Column(db.Float, default=1.0)
+    cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"), nullable=True)
+    status = db.Column(db.String(30), default=ClaimStatus.DRAFT.value)
+
+    subtotal_cents = db.Column(db.Integer, default=0)
+    tax_cents = db.Column(db.Integer, default=0)
+    total_cents = db.Column(db.Integer, default=0)
+    amount_paid_cents = db.Column(db.Integer, default=0)
+
+    ai_confidence = db.Column(db.Float, nullable=True)      # 0..1 overall
+    ai_summary = db.Column(db.Text, default="")
+
+    reviewer_notes = db.Column(db.Text, default="")         # clarification request / rejection reason
+    submitted_at = db.Column(db.DateTime, nullable=True)
+    decided_at = db.Column(db.DateTime, nullable=True)
+    decided_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    paid_at = db.Column(db.DateTime, nullable=True)
+
+    journal_entry_id = db.Column(db.Integer, db.ForeignKey("journal_entries.id"), nullable=True)
+    payment_journal_entry_id = db.Column(db.Integer, db.ForeignKey("journal_entries.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=now)
+
+    staff = db.relationship("User", foreign_keys=[staff_id])
+    decided_by = db.relationship("User", foreign_keys=[decided_by_id])
+    cost_center = db.relationship("CostCenter")
+    lines = db.relationship("ExpenseClaimLine", backref="claim", cascade="all, delete-orphan")
+    documents = db.relationship("Document", backref="claim")
+
+    def balance_due_cents(self):
+        return self.total_cents - self.amount_paid_cents
+
+    def recalc_totals(self):
+        self.subtotal_cents = sum(l.amount_cents for l in self.lines)
+        self.tax_cents = sum(l.tax_cents() for l in self.lines)
+        self.total_cents = self.subtotal_cents + self.tax_cents
+
+    def has_receipt(self):
+        return len(self.documents) > 0
+
+    def min_confidence(self):
+        confidences = [l.ai_confidence for l in self.lines if l.ai_confidence is not None]
+        return min(confidences) if confidences else None
+
+
+class ExpenseClaimLine(db.Model):
+    __tablename__ = "expense_claim_lines"
+    id = db.Column(db.Integer, primary_key=True)
+    claim_id = db.Column(db.Integer, db.ForeignKey("expense_claims.id"), nullable=False)
+    expense_date = db.Column(db.Date, nullable=True)
+    merchant = db.Column(db.String(200), default="")
+    description = db.Column(db.String(255), default="")
+    amount_cents = db.Column(db.Integer, default=0)
+    account_id = db.Column(db.Integer, db.ForeignKey("accounts.id"), nullable=True)
+    tax_rate_id = db.Column(db.Integer, db.ForeignKey("tax_rates.id"), nullable=True)
+    cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"), nullable=True)
+    category_guess = db.Column(db.String(120), default="")   # plain-English AI guess
+    ai_confidence = db.Column(db.Float, nullable=True)        # 0..1 for the account suggestion
+
+    account = db.relationship("Account")
+    tax_rate = db.relationship("TaxRate")
+    cost_center = db.relationship("CostCenter")
+
+    def tax_cents(self):
+        if self.tax_rate and self.tax_rate.rate:
+            return round(self.amount_cents * (self.tax_rate.rate / 100))
+        return 0
+
+
+class AuditLog(db.Model):
+    """Append-only trail of who did what and when across the system."""
+    __tablename__ = "audit_logs"
+    id = db.Column(db.Integer, primary_key=True)
+    at = db.Column(db.DateTime, default=now, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    user_name = db.Column(db.String(120), default="")   # denormalised so history survives user deletion
+    action = db.Column(db.String(40))                   # create/update/submit/approve/reject/clarify/pay/void/login
+    entity_type = db.Column(db.String(40))              # claim/bill/invoice/payment/user/auth
+    entity_id = db.Column(db.Integer, nullable=True)
+    summary = db.Column(db.String(400), default="")
+    detail = db.Column(db.Text, default="")             # optional JSON of before/after
+
+    user = db.relationship("User")
+
+
+class CategoryRule(db.Model):
+    """Learned mapping from a keyword (merchant / description token) to a GL
+    account, reinforced each time a human approves a categorisation. Drives the
+    AI's confidence and lets suggestions improve over time."""
+    __tablename__ = "category_rules"
+    id = db.Column(db.Integer, primary_key=True)
+    keyword = db.Column(db.String(120), index=True)    # lower-cased
+    account_id = db.Column(db.Integer, db.ForeignKey("accounts.id"), nullable=False)
+    hits = db.Column(db.Integer, default=1)
+    updated_at = db.Column(db.DateTime, default=now, onupdate=now)
+
+    account = db.relationship("Account")
+
+    __table_args__ = (db.UniqueConstraint("keyword", "account_id", name="uq_category_rule"),)

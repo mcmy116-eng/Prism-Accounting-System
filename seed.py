@@ -25,6 +25,7 @@ CHART_OF_ACCOUNTS = [
     ("2300", "Accrued Expenses", "liability", None, False, False),
     ("2400", "Deferred Revenue", "liability", None, False, False),
     ("2500", "Payroll Liabilities", "liability", None, False, False),
+    ("2550", "Employee Reimbursements Payable", "liability", None, False, True),
     ("2600", "Loans Payable", "liability", None, False, False),
     ("3000", "Share Capital / Owner's Equity", "equity", None, False, True),
     ("3200", "Owner's Drawings / Dividends", "equity", None, False, False),

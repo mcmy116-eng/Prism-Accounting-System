@@ -4,6 +4,49 @@ A running log of what happened on this project, in plain language, session by se
 
 ---
 
+## 2026-08-02 — Staff expense claims, audit trail, smarter AI
+
+**Why:** Prism is now live and trading, and the brief asked for staff expense
+claims, a proper audit trail, AI that gives a confidence level and learns, easy
+exports, and comfortable mobile receipt capture. The core books already existed —
+this round filled the gaps.
+
+**What we built:**
+- **Staff Expense Claims** — a whole new module. Staff (a new role) log in on their
+  phone, create a claim, snap a receipt (the camera opens automatically), AI reads
+  it and suggests a category with a **confidence bar**, and they submit. The admin
+  approves / rejects / requests clarification / marks paid. Full lifecycle:
+  Draft → Submitted → AI Reviewed → Pending Approval → Approved/Rejected → Paid.
+  Approval posts a real, balanced ledger entry; "mark paid" reimburses from a bank
+  account. Staff can only ever see their own claims (enforced, tested — others get 403).
+- **AI category learning** — every time you approve a categorisation, the system
+  remembers the vendor → account mapping and is more confident next time.
+- **Audit trail** — an append-only log of who did what and when, on its own admin
+  page. Nothing financial is ever hard-deleted.
+- **Anomaly flags** — claims get flagged for missing receipts, unusually large
+  amounts, and possible duplicates, on the list and the dashboard.
+- **CSV export** for expense claims; **dashboard** now shows claims pending approval
+  and amounts awaiting reimbursement.
+- **Mobile polish** — the sidebar collapses to a top strip, tables reflow, tap
+  targets and file inputs are enlarged on small screens.
+- **Auto-migration** — added `app/schema.py::ensure_schema()` so new tables/columns
+  appear on deploy with no manual migration step (works on SQLite and Postgres).
+
+**Tested end-to-end:** full claim lifecycle posts a balanced journal entry, the
+trial balance still balances, the learning loop improves suggestions, staff
+isolation returns 403, and every page renders (14/14 smoke-tested).
+
+**Also written:** `docs/PROPOSAL.md` — the full 9-part system proposal (architecture,
+data model, roles, screens, AI workflow, reporting, security, phased plan, and the
+open decisions to confirm before the next phase).
+
+**Decisions still to confirm** (see the end of `docs/PROPOSAL.md`): reimbursement vs
+corporate-card handling, VAT/GST regimes, Google login / 2FA, approval thresholds,
+staff onboarding method, Excel vs CSV priority, backup cadence, which sales
+integrations, and notification channels.
+
+---
+
 ## 2026-07-12 — Built and deployed the whole system
 
 **What we built:** A complete accounting web app for Prism Group International Limited —

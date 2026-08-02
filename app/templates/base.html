@@ -14,12 +14,16 @@
       <small>Accounting System</small>
     </div>
     <nav>
+      {% if current_user.is_staff_only() %}
+      <a href="{{ url_for('claims.index') }}" class="{{ 'active' if request.blueprint=='claims' }}">My Expense Claims</a>
+      {% else %}
       <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if request.blueprint=='dashboard' }}">Dashboard</a>
       <div class="section-label">Sales</div>
       <a href="{{ url_for('invoices.index') }}" class="{{ 'active' if request.blueprint=='invoices' }}">Invoices</a>
       <a href="{{ url_for('contacts.index') }}?type=customer" class="{{ 'active' if request.blueprint=='contacts' }}">Customers &amp; Vendors</a>
       <div class="section-label">Purchases</div>
       <a href="{{ url_for('bills.index') }}" class="{{ 'active' if request.blueprint=='bills' }}">Bills &amp; Expenses</a>
+      <a href="{{ url_for('claims.index') }}" class="{{ 'active' if request.blueprint=='claims' }}">Expense Claims</a>
       <div class="section-label">Banking</div>
       <a href="{{ url_for('bank.index') }}" class="{{ 'active' if request.blueprint=='bank' }}">Bank Accounts</a>
       <a href="{{ url_for('payments.index') }}" class="{{ 'active' if request.blueprint=='payments' }}">Payments</a>
@@ -30,6 +34,8 @@
       <a href="{{ url_for('settings.index') }}" class="{{ 'active' if request.blueprint=='settings' }}">Settings</a>
       {% if current_user.is_admin() %}
       <a href="{{ url_for('auth.users') }}" class="{{ 'active' if request.endpoint=='auth.users' }}">Users</a>
+      <a href="{{ url_for('auth.audit_log') }}" class="{{ 'active' if request.endpoint=='auth.audit_log' }}">Audit Log</a>
+      {% endif %}
       {% endif %}
     </nav>
     <div class="user-box">

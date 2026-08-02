@@ -16,9 +16,22 @@ financial statements out the other end.
   payment tracking, aging.
 - **Bills & Expenses (AP)** — upload or manual entry, approval workflow, payment
   tracking, aging.
+- **Staff expense claims** — staff submit reimbursement claims from their phone,
+  snap a receipt (camera capture), AI reads it and suggests a category with a
+  **confidence score**, admin approves/rejects/requests clarification/marks paid.
+  Approval posts a balanced entry crediting *Employee Reimbursements Payable*;
+  "mark paid" clears it against a bank account. Staff see **only their own** claims.
+  Workflow: Draft → Submitted → AI Reviewed → Pending Approval → Approved/Rejected → Paid.
+- **AI category learning** — every approved categorisation reinforces a
+  `keyword → account` rule, so repeat vendors get more confident suggestions over time.
+- **Audit trail** — append-only log of who did what and when (login, create, edit,
+  submit, approve, reject, pay, void), viewable by admins under *Audit Log*.
+- **Anomaly flags** — claims are flagged for missing receipts, unusually large
+  amounts, and possible duplicates.
+- **CSV export** — expense claims export to line-level CSV.
 - **Bank accounts & reconciliation** — CSV statement import, transaction matching
   against ledger entries, quick-entry posting for fees/interest.
-- **Multi-user & roles** — admin / bookkeeper / viewer.
+- **Multi-user & roles** — admin / bookkeeper / staff / viewer.
 - **Multi-currency** — per-contact/invoice/bill currency, exchange rate table.
 - **Cost centers / segments** — pre-seeded with E-commerce, Digital Marketing
   Services, and General & Admin so you can see P&L by business line.
@@ -96,11 +109,20 @@ docker exec -it <container> python seed.py
 
 ## Users & roles
 
-- **Admin** — everything, including company settings and user management.
-- **Bookkeeper** — can create/post invoices, bills, payments, reconciliations.
+- **Admin** — everything, including company settings, user management, and the audit log.
+- **Bookkeeper** — can create/post invoices, bills, payments, reconciliations; approve claims.
+- **Staff** — can only submit and track their own expense claims (no access to company books).
 - **Viewer** — read-only, for e.g. an external accountant reviewing the books.
 
-Add users under Settings → Users (admin only).
+Add users under Users (admin only).
+
+## Schema migrations
+
+There is no separate migration step to run. On every start the app calls
+`app.schema.ensure_schema()`, which idempotently creates any missing tables and
+adds new nullable columns (and the reimbursement liability account) — safe on both
+SQLite and Postgres. `seed.py` remains the one-time chart-of-accounts + first-admin
+bootstrap.
 
 ## How the AI extraction works
 

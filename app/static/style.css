@@ -153,8 +153,45 @@ form.inline { display: inline; }
 .badge-sent, .badge-awaiting_review { background: var(--warn-bg); color: var(--warn); }
 .badge-paid, .badge-approved { background: var(--success-bg); color: var(--success); }
 .badge-partial { background: #eef2ff; color: var(--primary); }
-.badge-overdue { background: var(--error-bg); color: var(--error); }
+.badge-overdue, .badge-rejected { background: var(--error-bg); color: var(--error); }
 .badge-void { background: #f3f4f6; color: #9ca3af; }
+.badge-submitted, .badge-pending_approval, .badge-clarification { background: var(--warn-bg); color: var(--warn); }
+.badge-ai_reviewed { background: #eef2ff; color: var(--primary); }
+
+/* Anomaly / review flags on claims */
+.flag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; margin: 0 4px 4px 0; }
+.flag-missing-receipt { background: var(--warn-bg); color: var(--warn); }
+.flag-unusual-amount { background: #fff1f2; color: #be123c; }
+.flag-possible-duplicate { background: var(--error-bg); color: var(--error); }
+
+/* AI confidence meter */
+.conf { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-muted); }
+.conf .bar { width: 54px; height: 6px; border-radius: 999px; background: #e5e7eb; overflow: hidden; }
+.conf .bar > span { display: block; height: 100%; }
+.conf.high .bar > span { background: var(--success); }
+.conf.med .bar > span { background: var(--warn); }
+.conf.low .bar > span { background: var(--error); }
+
+.workflow { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+.workflow .step { padding: 4px 10px; border-radius: 999px; background: #f3f4f6; color: #9ca3af; font-size: 11.5px; font-weight: 600; }
+.workflow .step.done { background: #eef2ff; color: var(--primary); }
+.workflow .step.current { background: var(--primary); color: #fff; }
+
+@media (max-width: 900px) {
+  .content { padding: 16px 14px 60px; }
+  .topbar { padding: 12px 14px; }
+  .flashes { padding: 0 14px; }
+  .sidebar { flex-direction: row; flex-wrap: wrap; padding: 10px; align-items: center; }
+  .sidebar .brand { border: none; margin: 0; padding: 6px 10px; flex-basis: 100%; }
+  .sidebar nav { display: flex; flex-wrap: wrap; gap: 2px; }
+  .sidebar .section-label { display: none; }
+  .sidebar nav a { padding: 7px 11px; }
+  .sidebar .user-box { margin: 0 0 0 auto; border: none; padding: 6px 10px; }
+  table { font-size: 13px; }
+  th, td { padding: 8px 7px; }
+  .field input[type="file"] { padding: 12px 10px; }
+  .btn { padding: 10px 16px; }
+}
 
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 12.5px; color: var(--text-muted); margin-bottom: 5px; font-weight: 500; }

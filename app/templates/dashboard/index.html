@@ -49,8 +49,35 @@
     {% endif %}
   </div>
 </div>
-<div class="grid grid-2">
+<div class="grid grid-4">
   <div class="kpi"><div class="label">Accounts Payable</div><div class="value">{{ company_settings.base_currency }} {{ total_ap | money }}</div></div>
   <div class="kpi"><div class="label">MTD expenses</div><div class="value">{{ company_settings.base_currency }} {{ mtd_expense | money }}</div></div>
+  <div class="kpi"><div class="label">Claims pending approval</div><div class="value">{{ company_settings.base_currency }} {{ pending_claims_total | money }}</div></div>
+  <div class="kpi"><div class="label">Approved, awaiting reimbursement</div><div class="value">{{ company_settings.base_currency }} {{ approved_unpaid_total | money }}</div></div>
+</div>
+
+<div class="card" style="margin-top:20px;">
+  <div class="toolbar">
+    <h2 style="margin:0;">Expense claims awaiting your approval</h2>
+    <a href="{{ url_for('claims.index') }}" class="btn btn-sm">All claims</a>
+  </div>
+  {% if pending_claims %}
+  <table>
+    <thead><tr><th>Claim</th><th>Staff</th><th>Submitted</th><th>Title</th><th class="num">Total</th></tr></thead>
+    <tbody>
+      {% for c in pending_claims %}
+      <tr onclick="location.href='{{ url_for('claims.detail', claim_id=c.id) }}'" style="cursor:pointer;">
+        <td>{{ c.number }}</td>
+        <td>{{ c.staff.name if c.staff else "—" }}</td>
+        <td>{{ c.submitted_at.date() if c.submitted_at else "—" }}</td>
+        <td>{{ c.title or "—" }}</td>
+        <td class="num">{{ c.currency_code }} {{ c.total_cents | money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No claims waiting. All caught up.</p>
+  {% endif %}
 </div>
 {% endblock %}
